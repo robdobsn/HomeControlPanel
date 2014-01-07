@@ -1,0 +1,43 @@
+﻿<Controls:MetroWindow x:Class="RdWebCamSysTrayApp.SettingsWindow"
+        xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:local="clr-namespace:RdWebCamSysTrayApp.Properties"
+        Title="SettingsWindow" Height="136" Width="522">
+    <Window.Resources>
+        <ResourceDictionary>
+            <local:Settings x:Key="settings" />
+            <ResourceDictionary.MergedDictionaries>
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Colours.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/Blue.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseLight.xaml" />
+            </ResourceDictionary.MergedDictionaries>
+        </ResourceDictionary>
+    </Window.Resources>
+    <Grid DataContext="{StaticResource settings}">
+        <Grid.RowDefinitions>
+            <RowDefinition Height="Auto" />
+            <RowDefinition Height="Auto" MinHeight="39" />
+            <RowDefinition Height="Auto" />
+        </Grid.RowDefinitions>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="Auto" MinWidth="159" />
+            <ColumnDefinition Width="Auto" MinWidth="20" />
+        </Grid.ColumnDefinitions>
+        <ComboBox x:Name="MicrophoneCombo" HorizontalAlignment="Left" Margin="0,0,-309,0" VerticalAlignment="Top" Width="343" Grid.Column="1" Height="26"
+            SelectedValue="{Binding Path=Default.Microphone}" 
+            SelectedValuePath="deviceName"
+            DisplayMemberPath="deviceName"/>
+        <Label Content="Microphone" HorizontalAlignment="Left" Margin="0,1,0,0" VerticalAlignment="Top" Width="150" Height="26"/>
+        <ComboBox x:Name="SpeakersCombo" HorizontalAlignment="Left" Margin="0,3,-309,0" VerticalAlignment="Top" Width="343" Height="26" Grid.Row="1" Grid.Column="1"
+            SelectedValue="{Binding Path=Default.Speakers}" 
+            SelectedValuePath="deviceName"
+            DisplayMemberPath="deviceName">
+        </ComboBox>
+        <Label Content="Speakers" HorizontalAlignment="Left" Margin="0,4,0,0" VerticalAlignment="Top" Width="150" Grid.Row="1" Height="26"/>
+        <Button x:Name="OkButton" Content="Ok" Grid.Column="1" HorizontalAlignment="Left" Margin="268,0,-306,0" Grid.Row="2" VerticalAlignment="Top" Width="75" Click="OkButton_Click"/>
+
+    </Grid>
+</Controls:MetroWindow>
