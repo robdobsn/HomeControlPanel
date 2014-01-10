@@ -23,6 +23,7 @@ using System.Reflection;
 using System.Windows.Threading;
 using MjpegProcessor;
 using System.Net.Http;
+using NLog;
 
 namespace RdWebCamSysTrayApp
 {
@@ -55,10 +56,14 @@ namespace RdWebCamSysTrayApp
         private EasyButtonImage doorLockedImages;
         private EasyButtonImage doorClosedImages;
         private EasyButtonImage doorBellImages;
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public MainWindow()
         {
             InitializeComponent();
+
+            // Log startup
+            logger.Info("App Starting ...");
 
             // Position window
             Left = Screen.PrimaryScreen.WorkingArea.Width - Width;
@@ -95,8 +100,19 @@ namespace RdWebCamSysTrayApp
             _ipEndPointBroadcastListen = new IPEndPoint(IPAddress.Any, 34343);
             _udpClientForDoorbellListener = new UdpClient();
             _udpClientForDoorbellListener.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
-            _udpClientForDoorbellListener.Client.Bind(_ipEndPointBroadcastListen);
-            _udpClientForDoorbellListener.BeginReceive(new AsyncCallback(DoorbellRingCallback), null);
+            try
+            {
+                _udpClientForDoorbellListener.Client.Bind(_ipEndPointBroadcastListen);
+                _udpClientForDoorbellListener.BeginReceive(new AsyncCallback(DoorbellRingCallback), null);
+            }
+            catch (SocketException excp)
+            {
+                logger.Info("Socket failed to bind to doorbell broadcast port 34343 ({0})", excp.ToString());
+            }
+            catch (Exception excp)
+            {
+                logger.Info("Other failed to bind to doorbell broadcast port 34343 ({0})", excp.ToString());
+            }
 
             // Front door
             _frontDoorControl = new FrontDoorControl(frontDoorIPAddress);
@@ -136,6 +152,9 @@ namespace RdWebCamSysTrayApp
             dtimer.Tick += new EventHandler(dtimer_Tick);
             dtimer.Interval = new TimeSpan(0, 0, 1);
             dtimer.Start();
+
+            // Log startup
+            logger.Info("App Started");
         }
 
         private void Window_Closed(object sender, EventArgs e)
@@ -261,6 +280,7 @@ namespace RdWebCamSysTrayApp
 
         private void DoorbellRingCallback(IAsyncResult ar)
         {
+            logger.Info("Doorbell callback {0}", ar.ToString());
             try
             {
                 System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
