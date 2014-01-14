@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
+using NLog;
 
 namespace RdWebCamSysTrayApp
 {
@@ -32,6 +33,7 @@ namespace RdWebCamSysTrayApp
         private bool _isTalking = false;
         private float _inVolumeWhenTalkingStarted = 0;
         private bool _inMuteSettingWhenTalkingStarted = false;
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public class DeviceInfo
         {
@@ -68,7 +70,7 @@ namespace RdWebCamSysTrayApp
             {
                 WaveInCapabilities devCaps = WaveIn.GetCapabilities(waveInDevice);
                 inDevCaps.Add(devCaps);
-                Console.WriteLine("Device {0}: {1}, {2} channels",
+                logger.Info("AudioDevices::UpdateDeviceInfo Device {0}: {1}, {2} channels",
                     waveInDevice, devCaps.ProductName, devCaps.Channels);
             }
 
@@ -78,7 +80,7 @@ namespace RdWebCamSysTrayApp
             {
                 WaveOutCapabilities devCaps = WaveOut.GetCapabilities(waveOutDevice);
                 outDevCaps.Add(devCaps);
-                Console.WriteLine("Device {0}: {1}, {2} channels",
+                logger.Info("AudioDevices::UpdateDeviceInfo Device {0}: {1}, {2} channels",
                     waveOutDevice, devCaps.ProductName, devCaps.Channels);
             }
 
@@ -246,7 +248,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception excp)
             {
-                Console.WriteLine("Exception in AudioDevices::SetOutVolume " + excp.Message);
+                logger.Error("Exception in AudioDevices::SetOutVolume {0}", excp.Message);
             }
         }
 
@@ -284,7 +286,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception excp)
             {
-                Console.WriteLine("Exception in AudioDevices::GetInVolume " + excp.Message);
+                logger.Error("Exception in AudioDevices::GetInVolume {0}", excp.Message);
 
             }
             return lev;
@@ -299,7 +301,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception excp)
             {
-                Console.WriteLine("Exception in AudioDevices::GetInMute " + excp.Message);
+                logger.Error("Exception in AudioDevices::GetInMute {0}", excp.Message);
             }
             return mute;
         }
@@ -317,7 +319,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception excp)
             {
-                Console.WriteLine("Exception in AudioDevices::SetInVolume " + excp.Message);
+                logger.Error("Exception in AudioDevices::SetInVolume {0}", excp.Message);
             }
         }
 

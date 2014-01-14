@@ -7,6 +7,7 @@ using System.Linq;
 using System.Net.Sockets;
 using System.Text;
 using System.Threading;
+using NLog;
 
 namespace RdWebCamSysTrayApp
 {
@@ -72,6 +73,7 @@ namespace RdWebCamSysTrayApp
         private NAudio.Wave.WaveFormat _waveFormat;
         private const int _NUM_SAMPLES = 3000;
         private byte[] _byteBuffer = new byte[_NUM_SAMPLES];
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public TalkToAxisCamera(string cameraIP, int cameraPort, string username, string password, AudioDevices localAudioDevices)
         {
@@ -124,7 +126,7 @@ namespace RdWebCamSysTrayApp
             // Start microphone
             OpenWaveInDevice();
 
-            Console.WriteLine("Talk Starting");
+            logger.Info("Talk Starting");
 
             _localAudioDevices.StartingTalking();
 
@@ -149,7 +151,7 @@ namespace RdWebCamSysTrayApp
             {
                 lock (_semaphore)
                 {
-                    Console.WriteLine("Talk Stopping");
+                    logger.Info("Talk Stopping");
                     _bTalking = false;
 
                     if (_tcpClient != null)
@@ -233,7 +235,7 @@ namespace RdWebCamSysTrayApp
                     }
                     catch (Exception excp)
                     {
-                        Console.WriteLine("wiDataAvailable excp " + excp.Message);
+                        logger.Error("TalkToAxisCamera::wiDataAvailable excp {0}", excp.Message);
                     }
                 }
             }

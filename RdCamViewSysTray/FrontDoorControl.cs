@@ -7,11 +7,14 @@ using System.Net.Http;
 using System.Text;
 using System.Threading.Tasks;
 using System.Timers;
+using NLog;
 
 namespace RdWebCamSysTrayApp
 {
     class FrontDoorControl
     {
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+       
         public class DoorStatus
         {
             public string tagId = "";
@@ -35,7 +38,7 @@ namespace RdWebCamSysTrayApp
                 }
                 catch(Exception excp)
                 {
-                    Console.WriteLine("Exception in FrontDoorControl::DoorStatus:Set " + excp.Message);
+                    logger.Error("Exception in FrontDoorControl::DoorStatus:Set {0}", excp.Message);
                 }
             }
         }
@@ -91,11 +94,11 @@ namespace RdWebCamSysTrayApp
                 // Above three lines can be replaced with new helper method in following line 
                 // string body = await client.GetStringAsync(uri);
 
-                Console.WriteLine(responseBody);
+                logger.Info("FrontDoorControl::ControlDoor response {0}", responseBody);
             }
             catch (HttpRequestException excp)
             {
-                Console.WriteLine("FrontDoorControl::ControlDoor exception " + excp.Message);
+                logger.Error("FrontDoorControl::ControlDoor exception {0}", excp.Message);
             }
         }
 
@@ -110,7 +113,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception excp)
             {
-                Console.WriteLine("Exception in FrontDoorControl::GetDoorStatus " + excp.Message);
+                logger.Error("Exception in FrontDoorControl::GetDoorStatus {0}", excp.Message);
             }
         }
 
@@ -140,7 +143,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception excp)
             {
-                Console.WriteLine("Exception in FrontDoorControl::DoorStatusCallback " + excp.Message);
+                logger.Error("Exception in FrontDoorControl::DoorStatusCallback {0}", excp.Message);
             }
         }
 

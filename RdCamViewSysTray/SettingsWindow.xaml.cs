@@ -12,6 +12,7 @@ using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
+using NLog;
 
 namespace RdWebCamSysTrayApp
 {
@@ -26,6 +27,7 @@ namespace RdWebCamSysTrayApp
     public partial class SettingsWindow : MetroWindow
     {
         private AudioDevices _audioDevices;
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public SettingsWindow(AudioDevices audioDevices)
         {
@@ -42,7 +44,7 @@ namespace RdWebCamSysTrayApp
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            Console.WriteLine(SpeakersCombo.SelectedValue);
+            logger.Info("SettingsWindow::OkButton_Clicked speakerscombo.selvalue {0}", SpeakersCombo.SelectedValue);
 
             _audioDevices.SetWaveOutDeviceName((string)SpeakersCombo.SelectedValue);
             _audioDevices.SetWaveInDeviceName((string)MicrophoneCombo.SelectedValue);

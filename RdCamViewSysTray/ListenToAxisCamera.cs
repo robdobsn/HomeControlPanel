@@ -10,6 +10,7 @@ using System.Net;
 using System.Threading;
 using System.Windows.Threading;
 using System.Timers;
+using NLog;
 
 namespace RdWebCamSysTrayApp
 {
@@ -17,6 +18,7 @@ namespace RdWebCamSysTrayApp
     {
         private Stream sourceStream;
         private WaveFormat waveFormat;
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public RawSourceWaveStream(Stream sourceStream, WaveFormat waveFormat)
         {
@@ -55,7 +57,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception e)
             {
-                Console.WriteLine("Exception in RawSourceWaveStream::Read " + e.Message);
+                logger.Error("Exception in RawSourceWaveStream::Read {0}", e.Message);
             }
 
             return bytesRead;
@@ -70,6 +72,7 @@ namespace RdWebCamSysTrayApp
         private AudioDevices _audioDevices;
         private System.Timers.Timer _timerForListeningForAFixedTime;
         private System.Timers.Timer _timeOutForStoppingListening;
+        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public ListenToAxisCamera(string ipAddress, AudioDevices audioDevices)
         {
@@ -140,7 +143,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception excp)
             {
-                Console.WriteLine("Exception in ListenToAxisCamera::requestAudio " + excp.Message);
+                logger.Error("Exception in ListenToAxisCamera::requestAudio {0}", excp.Message);
             }
         }
 
@@ -171,7 +174,7 @@ namespace RdWebCamSysTrayApp
                             request.Abort();
                             _isListening = false;
                             _reqToStop = false;
-                            Console.WriteLine("GetAudioAsync::Request aborted");
+                            logger.Info("ListenToAxisCamera::GetAudioAsync::Request aborted");
                             break;
                         }
 

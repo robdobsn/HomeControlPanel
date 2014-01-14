@@ -57,6 +57,7 @@ namespace RdWebCamSysTrayApp
         private EasyButtonImage doorClosedImages;
         private EasyButtonImage doorBellImages;
         private static Logger logger = LogManager.GetCurrentClassLogger();
+        private const int _udpDoorbellPort = 34343;
 
         public MainWindow()
         {
@@ -97,7 +98,7 @@ namespace RdWebCamSysTrayApp
                 });
 
             // Listen for doorbell ringing - UDP broadcast
-            _ipEndPointBroadcastListen = new IPEndPoint(IPAddress.Any, 34343);
+            _ipEndPointBroadcastListen = new IPEndPoint(IPAddress.Any, _udpDoorbellPort);
             _udpClientForDoorbellListener = new UdpClient();
             _udpClientForDoorbellListener.Client.SetSocketOption(SocketOptionLevel.Socket, SocketOptionName.ReuseAddress, true);
             try
@@ -107,11 +108,11 @@ namespace RdWebCamSysTrayApp
             }
             catch (SocketException excp)
             {
-                logger.Info("Socket failed to bind to doorbell broadcast port 34343 ({0})", excp.ToString());
+                logger.Info("Socket failed to bind to doorbell broadcast port {1} ({0})", excp.ToString(), _udpDoorbellPort);
             }
             catch (Exception excp)
             {
-                logger.Info("Other failed to bind to doorbell broadcast port 34343 ({0})", excp.ToString());
+                logger.Info("Other failed to bind to doorbell broadcast port {1} ({0})", excp.ToString(), _udpDoorbellPort);
             }
 
             // Front door
@@ -283,6 +284,22 @@ namespace RdWebCamSysTrayApp
             logger.Info("Doorbell callback {0}", ar.ToString());
             try
             {
+                // Get broadcast
+
+                IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, _udpDoorbellPort);
+                byte[] received = _udpClientForDoorbellListener.EndReceive(ar, ref remoteIpEndPoint);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Exception in MainWindow::DoorbellRingCallback1 {0}", excp.Message);
+            }
+
+            try
+            {
+                // Restart receive
+                _udpClientForDoorbellListener.BeginReceive(new AsyncCallback(DoorbellRingCallback), null);
+
+                // Popup window and start listing to audio from camera
                 System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
                         (System.Windows.Forms.MethodInvoker)delegate()
                             {
@@ -292,7 +309,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception excp)
             {
-                Console.WriteLine("Exception in MainWindow::DoorbellRingCallback " + excp.Message);
+                logger.Error("Exception in MainWindow::DoorbellRingCallback2 {0}", excp.Message);
             }
         }
 
@@ -400,11 +417,11 @@ namespace RdWebCamSysTrayApp
                 // Above three lines can be replaced with new helper method in following line 
                 // string body = await client.GetStringAsync(uri);
 
-                Console.WriteLine(responseBody);
+                logger.Info("SquirtButton_Click response {0}", responseBody);
             }
             catch (HttpRequestException excp)
             {
-                Console.WriteLine("MainWindow::SquirtButton_Click exception " + excp.Message);
+                logger.Info("MainWindow::SquirtButton_Click exception {0}", excp.Message);
             }
         }
 
