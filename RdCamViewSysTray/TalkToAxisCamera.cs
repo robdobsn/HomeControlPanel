@@ -100,7 +100,7 @@ namespace RdWebCamSysTrayApp
             //sPost += "Content-Type: multipart/x-mixed-replace; boundary=--myboundary\r\n";
             sPost += "Content-Type: audio/basic\r\n";
             sPost += "Content-Length: 9999999\r\n";
-            sPost += "Connection: Keep-Alive\r\n";
+            sPost += "Connection: Keep-Alive\r\n";  // Have read about problems with .NET keep-alive but this seems to work ok
             sPost += "Cache-Control: no-cache\r\n";
 
             string usernamePassword = _username + ":" + _password;
@@ -205,7 +205,14 @@ namespace RdWebCamSysTrayApp
                         _memStream.Write(e.Buffer, 0, e.BytesRecorded);
                         _memStream.Seek(0, SeekOrigin.Begin);
                         //                    Console.WriteLine("BytesRec " + e.BytesRecorded + ", MemStrLen " + _memStream.Length);
+                    }
+                    catch (Exception excp)
+                    {
+                        logger.Error("TalkToAxisCamera::wiDataAvailable _memStream.Write excp {0}", excp.Message);
+                    }
 
+                    try
+                    {
                         int numRead;
                         int totalRead = 0;
                         int pkVal = 0;
@@ -213,6 +220,7 @@ namespace RdWebCamSysTrayApp
                         {
                             // Send to camera
                             _avStream.Write(_byteBuffer, 0, numRead);
+                            // logger.Info("converter read {0}", numRead);
 
                             // Get peak volume
                             for (int i = 0; i < numRead; i++)
@@ -230,13 +238,30 @@ namespace RdWebCamSysTrayApp
 
                         _peakTalkVolume = pkVal;
                         _localAudioDevices.SuppressAudioFeedback(_peakTalkVolume);
-                        _memStream.SetLength(0);
 
                     }
                     catch (Exception excp)
                     {
-                        logger.Error("TalkToAxisCamera::wiDataAvailable excp {0}", excp.Message);
+                        logger.Error("TalkToAxisCamera::wiDataAvailable _avStreamWrite() excp {0}", excp.Message);
                     }
+
+                    try
+                    {
+                        _memStream.SetLength(0);
+                    }
+                    catch (Exception excp)
+                    {
+                        logger.Error("TalkToAxisCamera::wiDataAvailable _memStream.SetLength excp {0}", excp.Message);
+                    }
+
+                    //try
+                    //{
+                    //    if (_avStream.DataAvailable)
+                    //    {
+                    //        _avStream.re
+                    //    }
+                    //}
+
                 }
             }
         }

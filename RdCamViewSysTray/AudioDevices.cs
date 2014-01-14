@@ -23,6 +23,8 @@ namespace RdWebCamSysTrayApp
         private float OutVolumeFeedbackSuppressFull { get; set; }
         private float _outVolumeWhenListenStarted;
         private bool _outMuteSettingWhenListenStarted;
+        private bool _outVolumeMuteWhenTalking;
+        private bool _outMuteSettingWhenTalkingStarted;
         private Timer _audioFeedbackSuppressionTimer;
         DateTime _timeOfFirstFeedbackSuppress = DateTime.MinValue;
         DateTime _timeOfLastFeedbackSuppress = DateTime.MinValue;
@@ -48,6 +50,8 @@ namespace RdWebCamSysTrayApp
         public AudioDevices()
         {
             _outVolumeWhenListening = 0.5f;
+            _outVolumeMuteWhenTalking = true;
+            _outMuteSettingWhenTalkingStarted = false;
             OutVolumeFeedbackSuppressFull = 0.0f;
             _audioFeedbackSuppressionTimer = new Timer(100);
             _audioFeedbackSuppressionTimer.Elapsed += new ElapsedEventHandler(OnFeedbackSuppressTimer);
@@ -136,14 +140,14 @@ namespace RdWebCamSysTrayApp
                     catch (Exception ex)
                     {
                         //Do something with exception when an audio endpoint could not be muted
-                        System.Diagnostics.Debug.Print("Exception in Update " + ex.Message);
+                        logger.Error("AudioDevices::UpdateDeviceInfo Exception in Update {0}", ex.Message);
                     }
                 }
             }
             catch (Exception ex)
             {
                 //When something happend that prevent us to iterate through the devices
-                System.Diagnostics.Debug.Print("Could not enumerate devices due to an excepion: " + ex.Message);
+                logger.Error("AudioDevices::UpdateDeviceInfo Could not enumerate devices due to an excepion: {0}", ex.Message);
             }
         }
 
@@ -177,6 +181,11 @@ namespace RdWebCamSysTrayApp
 
         public void StartingTalking()
         {
+            if (_outVolumeMuteWhenTalking)
+            {
+                _outMuteSettingWhenTalkingStarted = GetOutMute();
+                SetOutMute(true);
+            }
             _inVolumeWhenTalkingStarted = GetInVolume();
             _inMuteSettingWhenTalkingStarted = GetInMute();
             SetInVolume(_inVolumeWhenTalking);
@@ -185,11 +194,17 @@ namespace RdWebCamSysTrayApp
 
         public void StoppingTalking()
         {
+            if (_outVolumeMuteWhenTalking)
+            {
+                SetOutMute(_outMuteSettingWhenTalkingStarted);
+            }
             _isTalking = false;
         }
 
         public void SuppressAudioFeedback(int peakLocalMicVolume)
         {
+            return;         // This is disabled for now - using simplex audio - muting speaker when talking
+
             if (peakLocalMicVolume > _talkVolumeThresholdForFeedbackSuppress)
             {
                 if (_timeOfFirstFeedbackSuppress == DateTime.MinValue)
@@ -244,7 +259,7 @@ namespace RdWebCamSysTrayApp
                 _curOutDevice.AudioEndpointVolume.Mute = bMute;
 
                 //Get its audio volume
-                System.Diagnostics.Debug.Print("Volume of " + _curOutDevice.FriendlyName + " is " + _curOutDevice.AudioEndpointVolume.MasterVolumeLevelScalar.ToString());
+                logger.Info("AudioDevices::SetOutVolume Volume of {0} is {1}", _curOutDevice.FriendlyName, _curOutDevice.AudioEndpointVolume.MasterVolumeLevelScalar.ToString());
             }
             catch (Exception excp)
             {
@@ -275,6 +290,11 @@ namespace RdWebCamSysTrayApp
         public bool GetOutMute()
         {
             return _curOutDevice.AudioEndpointVolume.Mute;
+        }
+
+        public void SetOutMute(bool mute)
+        {
+            _curOutDevice.AudioEndpointVolume.Mute = mute;
         }
 
         public float GetInVolume()
@@ -315,7 +335,7 @@ namespace RdWebCamSysTrayApp
                 _curInDevice.AudioEndpointVolume.Mute = bMute;
 
                 //Get its audio volume
-                System.Diagnostics.Debug.Print("Volume of " + _curInDevice.FriendlyName + " is " + _curInDevice.AudioEndpointVolume.MasterVolumeLevelScalar.ToString());
+                logger.Info("Volume of {0} is {1}", _curInDevice.FriendlyName, _curInDevice.AudioEndpointVolume.MasterVolumeLevelScalar.ToString());
             }
             catch (Exception excp)
             {
