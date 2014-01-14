@@ -28,7 +28,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <InstallUrl>\\macallan\main\RobDev\Deploy\RdCamViewSysTray\</InstallUrl>
-    <ApplicationRevision>8</ApplicationRevision>
+    <ApplicationRevision>10</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -115,6 +115,7 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="BiQuadFilter.cs" />
+    <Compile Include="BlindsControl.cs" />
     <Compile Include="EasyButtonImage.cs" />
     <Compile Include="FrontDoorControl.cs" />
     <Compile Include="ImageBuffer.cs" />

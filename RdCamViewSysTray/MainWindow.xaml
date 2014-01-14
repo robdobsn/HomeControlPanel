@@ -2,7 +2,7 @@
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Home Control" Height="840" Width="980" Closed="Window_Closed" Icon="res/door48x48.ico">
+        Title="Home Control" Height="961.5" Width="980" Closed="Window_Closed" Icon="res/door48x48.ico">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>
@@ -19,7 +19,7 @@
         </ResourceDictionary>
     </Window.Resources>
     <StackPanel Name="stackPanel1" Margin="2" >
-        <Grid Height="809" Margin="0,0,0,0" >
+        <Grid Height="938" Margin="0,0,0,0" >
             <Grid.RowDefinitions>
                 <RowDefinition Height="335"/>
                 <RowDefinition Height="335"/>
@@ -32,8 +32,12 @@
             <Image x:Name="image1" Stretch="Fill" Margin="0,0,0,0" Grid.Column="0" Grid.RowSpan="2"/>
             <Image x:Name="image2" Stretch="Fill" Margin="0,0,0,0" Grid.Column="1"/>
             <Image x:Name="image3" Stretch="Fill" Margin="0,0,0,0" Grid.Column="1" Grid.Row="1" />
-            <Grid Height="123" Margin="0,10,0,0" Grid.Column="0" Grid.Row="2">
+            <Grid Margin="0,10,0,-42" Grid.Column="0" Grid.Row="2">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="30" />
+                    <RowDefinition Height="30" />
                     <RowDefinition Height="30" />
                     <RowDefinition Height="30" />
                     <RowDefinition Height="30" />
@@ -59,26 +63,47 @@
                 <Image x:Name="mainDoorOpenState" Grid.Column="3" HorizontalAlignment="Left" Height="28" Margin="0" Grid.Row="2" VerticalAlignment="Top" Width="88" Source="res/doorclosed-large.png"/>
                 <Image x:Name="doorBellState" Grid.Column="4" HorizontalAlignment="Left" Height="28" Margin="0" Grid.Row="2" VerticalAlignment="Top" Width="88" Source="res/doorbell-large.png"/>
                 <Image x:Name="innerDoorLockState" Grid.Column="2" HorizontalAlignment="Left" Height="28" Margin="10,0,0,0" Grid.Row="3" VerticalAlignment="Top" Width="88" Source="res/locked-large.png"/>
+                <Button Height="29" x:Name="Settings" Width="88" Click="Settings_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Grid.Row="3" Grid.Column="4" Grid.RowSpan="1" Margin="0,4,4,-3">
+                    <Image Source="res/settings.png" RenderTransformOrigin="0.405,0.452"/>
+                </Button>
+                <Label Content="Rob's" HorizontalContentAlignment="Center" Grid.Row="4" VerticalAlignment="Center" Height="30" Width="95" FontSize="16"/>
+                <Label Content="Left" HorizontalContentAlignment="Center" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Height="30" Width="95" FontSize="16"/>
+                <Label Content="Left-Mid" HorizontalContentAlignment="Center" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" Height="30" Width="95" FontSize="16"/>
+                <Label Content="Right-Mid" HorizontalContentAlignment="Center" Grid.Row="4" Grid.Column="3" VerticalAlignment="Center" Height="30" Width="95" FontSize="16"/>
+                <Label Content="Right" HorizontalContentAlignment="Center" Grid.Row="4" Grid.Column="4" VerticalAlignment="Center" Height="30" Width="95" FontSize="16"/>
+                <Button Content="Up" Height="26" x:Name="RobsUpButton" Width="91" Click="RobsUpButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="5" Grid.Column="0" />
+                <Button Content="Up" Height="26" x:Name="LeftUpButton" Width="91" Click="LeftUpButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="5" Grid.Column="1" />
+                <Button Content="Up" Height="26" x:Name="LeftMidUpButton" Width="91" Click="LeftMidUpButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="5" Grid.Column="2" />
+                <Button Content="Up" Height="26" x:Name="RightMidUpButton" Width="91" Click="RightMidUpButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="5" Grid.Column="3" />
+                <Button Content="Up" Height="26" x:Name="RightUpButton" Width="91" Click="RightUpButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="5" Grid.Column="4" />
+                <Button Content="Stop" Height="26" x:Name="RobsStopButton" Width="91" Click="RobsStopButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="0" />
+                <Button Content="Stop" Height="26" x:Name="LeftStopButton" Width="91" Click="LeftStopButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="1" />
+                <Button Content="Stop" Height="26" x:Name="LeftMidStopButton" Width="91" Click="LeftMidStopButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="2" />
+                <Button Content="Stop" Height="26" x:Name="RightMidStopButton" Width="91" Click="RightMidStopButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="3" />
+                <Button Content="Stop" Height="26" x:Name="RightStopButton" Width="91" Click="RightStopButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="4" />
+                <Button Content="Down" Height="26" x:Name="RobsDownButton" Width="91" Click="RobsDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="0" />
+                <Button Content="Down" Height="26" x:Name="LeftDownButton" Width="91" Click="LeftDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="1" />
+                <Button Content="Down" Height="26" x:Name="LeftMidDownButton" Width="91" Click="LeftMidDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="2" />
+                <Button Content="Down" Height="26" x:Name="RightMidDownButton" Width="91" Click="RightMidDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="3" />
+                <Button Content="Down" Height="26" x:Name="RightDownButton" Width="91" Click="RightDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="4" />
             </Grid>
-            <Grid Height="123" Margin="0,10,0,0" Grid.Column="1" Grid.Row="2">
+            <Grid Height="Auto" Margin="0,10,0,0" Grid.Column="1" Grid.Row="2">
                 <Grid.RowDefinitions>
+                    <RowDefinition Height="90" />
                     <RowDefinition Height="30" />
                     <RowDefinition Height="30" />
                     <RowDefinition Height="30" />
                     <RowDefinition Height="30" />
                 </Grid.RowDefinitions>
                 <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="92" />
-                    <ColumnDefinition Width="90" />
-                    <ColumnDefinition Width="111" />
-                    <ColumnDefinition Width="94" />
-                    <ColumnDefinition Width="92"/>
+                    <ColumnDefinition Width="95" />
+                    <ColumnDefinition Width="95" />
+                    <ColumnDefinition Width="95" />
+                    <ColumnDefinition Width="95" />
+                    <ColumnDefinition Width="95"/>
                 </Grid.ColumnDefinitions>
-                <Button Height="58" x:Name="Settings" Width="52" Click="Settings_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Grid.Column="4" Grid.RowSpan="2" Margin="0,4,20,0">
-                    <Image Source="res/settings.png" RenderTransformOrigin="0.405,0.452"/>
-                </Button>
-                <Button x:Name="SquirtButton" Height="auto" HorizontalAlignment="Left" VerticalAlignment="Top" Width="auto" BorderBrush="#FFCCCCCC" Grid.ColumnSpan="5" Grid.RowSpan="4" Margin="42,2,0,0" Click="SquirtButton_Click">
-                    <Image Source="res/sprayimgwithcat.png"/>
+                <Button x:Name="SquirtButton" Height="118" HorizontalAlignment="Left" VerticalAlignment="Top" Width="332" BorderBrush="#FFCCCCCC" Grid.ColumnSpan="5" Margin="68,32,0,0" Click="SquirtButton_Click" Grid.RowSpan="3">
+                    <Image Source="res/sprayimgwithcat.png" Height="108" Width="322"/>
                 </Button>
             </Grid>
         </Grid>

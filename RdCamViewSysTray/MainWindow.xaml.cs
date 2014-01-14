@@ -45,6 +45,7 @@ namespace RdWebCamSysTrayApp
         private const string thirdCameraIPAddress = "192.168.0.213";
         private const string frontDoorIPAddress = "192.168.0.221";
         private const string catDeterrentIPAddress = "192.168.0.223";
+        private const string officeBlindsIPAddress = "192.168.0.220";
         private System.Windows.Forms.NotifyIcon _notifyIcon;
         private IPEndPoint _ipEndPointBroadcastListen;
         private UdpClient _udpClientForDoorbellListener;
@@ -58,6 +59,7 @@ namespace RdWebCamSysTrayApp
         private EasyButtonImage doorBellImages;
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private const int _udpDoorbellPort = 34343;
+        private BlindsControl _officeBlindsControl;
 
         public MainWindow()
         {
@@ -117,6 +119,9 @@ namespace RdWebCamSysTrayApp
 
             // Front door
             _frontDoorControl = new FrontDoorControl(frontDoorIPAddress);
+
+            // Office blinds
+            _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
 
             // Create the video decoder
             _mjpeg1 = new MjpegDecoder();
@@ -423,6 +428,81 @@ namespace RdWebCamSysTrayApp
             {
                 logger.Info("MainWindow::SquirtButton_Click exception {0}", excp.Message);
             }
+        }
+
+        private void RobsUpButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(0, "up");
+        }
+
+        private void LeftUpButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(1, "up");
+        }
+
+        private void LeftMidUpButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(2, "up");
+        }
+
+        private void RightMidUpButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(3, "up");
+        }
+
+        private void RightUpButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(4, "up");
+        }
+
+        private void RobsStopButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(0, "stop");
+        }
+
+        private void LeftStopButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(1, "stop");
+        }
+
+        private void LeftMidStopButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(2, "stop");
+        }
+
+        private void RightMidStopButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(3, "stop");
+        }
+
+        private void RightStopButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(4, "stop");
+        }
+
+        private void RobsDownButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(0, "down");
+        }
+
+        private void LeftDownButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(1, "down");
+        }
+
+        private void LeftMidDownButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(2, "down");
+        }
+
+        private void RightMidDownButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(3, "down");
+        }
+
+        private void RightDownButton_Click(object sender, RoutedEventArgs e)
+        {
+            _officeBlindsControl.ControlBlind(4, "down");
         }
 
     }
