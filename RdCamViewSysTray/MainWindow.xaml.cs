@@ -139,7 +139,7 @@ namespace RdWebCamSysTrayApp
             inSlider.Value = Properties.Settings.Default.MicVol * 100;
 
             // Audio in/out
-            talkToAxisCamera = new TalkToAxisCamera(frontDoorCameraIPAddress, 80, "root", "password", _localAudioDevices);
+            talkToAxisCamera = new TalkToAxisCamera(frontDoorCameraIPAddress, 80, "root", "Forcione01", _localAudioDevices);
             listenToAxisCamera = new ListenToAxisCamera(frontDoorCameraIPAddress, _localAudioDevices);
 
             // Start Video
