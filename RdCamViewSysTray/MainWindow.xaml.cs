@@ -344,6 +344,7 @@ namespace RdWebCamSysTrayApp
 
         private void Settings_Click(object sender, RoutedEventArgs e)
         {
+            ControlToReceiveFocus.Focus();
             SettingsWindow sw = new SettingsWindow(_localAudioDevices);
             sw.Show();
         }
@@ -428,81 +429,97 @@ namespace RdWebCamSysTrayApp
             {
                 logger.Info("MainWindow::SquirtButton_Click exception {0}", excp.Message);
             }
+            ControlToReceiveFocus.Focus();
         }
 
         private void RobsUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(0, "up");
+            ControlToReceiveFocus.Focus();
         }
 
         private void LeftUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(1, "up");
+            ControlToReceiveFocus.Focus();
         }
 
         private void LeftMidUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(2, "up");
+            ControlToReceiveFocus.Focus();
         }
 
         private void RightMidUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(3, "up");
+            ControlToReceiveFocus.Focus();
         }
 
         private void RightUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(4, "up");
+            ControlToReceiveFocus.Focus();
         }
 
         private void RobsStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(0, "stop");
+            ControlToReceiveFocus.Focus();
         }
 
         private void LeftStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(1, "stop");
+            ControlToReceiveFocus.Focus();
         }
 
         private void LeftMidStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(2, "stop");
+            ControlToReceiveFocus.Focus();
         }
 
         private void RightMidStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(3, "stop");
+            ControlToReceiveFocus.Focus();
         }
 
         private void RightStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(4, "stop");
+            ControlToReceiveFocus.Focus();
         }
 
         private void RobsDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(0, "down");
+            ControlToReceiveFocus.Focus();
         }
 
         private void LeftDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(1, "down");
+            ControlToReceiveFocus.Focus();
         }
 
         private void LeftMidDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(2, "down");
+            ControlToReceiveFocus.Focus();
         }
 
         private void RightMidDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(3, "down");
+            ControlToReceiveFocus.Focus();
         }
 
         private void RightDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(4, "down");
+            ControlToReceiveFocus.Focus();
         }
 
     }
