@@ -46,6 +46,7 @@ namespace RdWebCamSysTrayApp
         private const string frontDoorIPAddress = "192.168.0.221";
         private const string catDeterrentIPAddress = "192.168.0.223";
         private const string officeBlindsIPAddress = "192.168.0.220";
+        private const string configFileSource = "//macallan/main/RobDev/ITConfig/RdCamViewSysTray.txt";
         private System.Windows.Forms.NotifyIcon _notifyIcon;
         private IPEndPoint _ipEndPointBroadcastListen;
         private UdpClient _udpClientForDoorbellListener;
@@ -60,6 +61,9 @@ namespace RdWebCamSysTrayApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private const int _udpDoorbellPort = 34343;
         private BlindsControl _officeBlindsControl;
+        private int _autoHideRequiredSecs = 0;
+        private const int AUTO_HIDE_AFTER_AUTO_SHOW_SECS = 30;
+        private const int AUTO_HIDE_AFTER_MANUAL_SHOW_SECS = 120;
 
         public MainWindow()
         {
@@ -85,7 +89,7 @@ namespace RdWebCamSysTrayApp
                     if (args.Button == MouseButtons.Left)
                     {
                         if (!this.IsVisible)
-                            ShowPopupWindow();
+                            ShowPopupWindow(AUTO_HIDE_AFTER_MANUAL_SHOW_SECS);
                         else
                             HidePopupWindow();
                     }
@@ -139,7 +143,20 @@ namespace RdWebCamSysTrayApp
             inSlider.Value = Properties.Settings.Default.MicVol * 100;
 
             // Audio in/out
-            talkToAxisCamera = new TalkToAxisCamera(frontDoorCameraIPAddress, 80, "root", "Forcione01", _localAudioDevices);
+            string username = "";
+            string password = "";
+            try
+            {
+                string[] lines = File.ReadAllLines(configFileSource);
+                username = lines[0];
+                password = lines[1];
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Cannot read username and password for Axis camera from " + configFileSource + " excp " + excp.ToString());
+            }
+
+            talkToAxisCamera = new TalkToAxisCamera(frontDoorCameraIPAddress, 80, username, password, _localAudioDevices);
             listenToAxisCamera = new ListenToAxisCamera(frontDoorCameraIPAddress, _localAudioDevices);
 
             // Start Video
@@ -199,14 +216,17 @@ namespace RdWebCamSysTrayApp
             this.Focus();
         }
 
-        public void ShowPopupWindow()
+        public void ShowPopupWindow(int autoHideSecs)
         {
+            _autoHideRequiredSecs = autoHideSecs;
             BringWindowToFront();
             StartVideo();
+            logger.Info("Popup Shown");
         }
 
         public void HidePopupWindow()
         {
+            logger.Info("Popup Hidden");
             StopVideo();
             StopTalkAndListen();
             this.Hide();
@@ -308,7 +328,7 @@ namespace RdWebCamSysTrayApp
                 System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
                         (System.Windows.Forms.MethodInvoker)delegate()
                             {
-                                ShowPopupWindow();
+                                ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
                                 listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
                             });
             }
@@ -403,9 +423,17 @@ namespace RdWebCamSysTrayApp
                 if (doorStatus.bellPressed)
                     doorBellState.Source = doorBellImages.Img1();
                 else 
-                    doorBellState.Source = null;
+                    doorBellState.Source = null;   
+            }
 
-                
+            // Check for auto-hide required
+            if (_autoHideRequiredSecs > 0)
+            {
+                _autoHideRequiredSecs--;
+                if (_autoHideRequiredSecs == 0)
+                {
+                    HidePopupWindow();
+                }
             }
 
         }
