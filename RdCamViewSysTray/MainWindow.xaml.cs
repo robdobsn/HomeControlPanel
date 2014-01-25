@@ -64,6 +64,8 @@ namespace RdWebCamSysTrayApp
         private int _autoHideRequiredSecs = 0;
         private const int AUTO_HIDE_AFTER_AUTO_SHOW_SECS = 30;
         private const int AUTO_HIDE_AFTER_MANUAL_SHOW_SECS = 120;
+        private const int DOOR_STATUS_REFRESH_SECS = 30;
+        private int _doorStatusRefreshCount = 0;
 
         public MainWindow()
         {
@@ -165,7 +167,7 @@ namespace RdWebCamSysTrayApp
             // Door status images
             doorLockedImages = new EasyButtonImage(@"res/locked-large.png", @"res/unlocked-large.png");
             doorClosedImages = new EasyButtonImage(@"res/doorclosed-large.png", @"res/dooropen-large.png");
-            doorBellImages = new EasyButtonImage(@"res/doorbell-large.png", @"res/doorbell-large.png");
+            doorBellImages = new EasyButtonImage(@"res/doorbell-large-sq.png", @"res/doorbell-large.png");
 
             // Start getting updates from front door
             _frontDoorControl.StartUpdates();
@@ -313,6 +315,14 @@ namespace RdWebCamSysTrayApp
 
                 IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, _udpDoorbellPort);
                 byte[] received = _udpClientForDoorbellListener.EndReceive(ar, ref remoteIpEndPoint);
+                string recvStr = Encoding.UTF8.GetString(received, 0, received.Length);
+                FrontDoorControl.DoorStatus doorStatus = new FrontDoorControl.DoorStatus(recvStr);
+                this.Dispatcher.BeginInvoke(
+                    (Action)delegate()
+                        {
+                            ShowDoorStatus(doorStatus);
+                        }
+                    );
             }
             catch (Exception excp)
             {
@@ -402,28 +412,37 @@ namespace RdWebCamSysTrayApp
             ControlToReceiveFocus.Focus();
         }
 
+        private void ShowDoorStatus(FrontDoorControl.DoorStatus doorStatus)
+        {
+            if (doorStatus.mainLocked)
+                mainDoorLockState.Source = doorLockedImages.Img1();
+            else
+                mainDoorLockState.Source = doorLockedImages.Img2();
+            if (doorStatus.innerLocked)
+                innerDoorLockState.Source = doorLockedImages.Img1();
+            else
+                innerDoorLockState.Source = doorLockedImages.Img2();
+            if (!doorStatus.mainOpen)
+                mainDoorOpenState.Source = doorClosedImages.Img1();
+            else
+                mainDoorOpenState.Source = doorClosedImages.Img2();
+            if (doorStatus.bellPressed)
+                doorBellState.Source = doorBellImages.Img1();
+            else
+                doorBellState.Source = null;
+        }
+
         private void dtimer_Tick(object sender, EventArgs e)
         {
-            FrontDoorControl.DoorStatus doorStatus;
-            bool valid = _frontDoorControl.GetDoorStatus(out doorStatus);
-            if (valid)
+            // Show door status
+            _doorStatusRefreshCount--;
+            if (_doorStatusRefreshCount <= 0)
             {
-                if (doorStatus.mainLocked)
-                    mainDoorLockState.Source = doorLockedImages.Img1();
-                else
-                    mainDoorLockState.Source = doorLockedImages.Img2();
-                if (doorStatus.innerLocked)
-                    innerDoorLockState.Source = doorLockedImages.Img1();
-                else
-                    innerDoorLockState.Source = doorLockedImages.Img2();
-                if (!doorStatus.mainOpen)
-                    mainDoorOpenState.Source = doorClosedImages.Img1();
-                else
-                    mainDoorOpenState.Source = doorClosedImages.Img2();
-                if (doorStatus.bellPressed)
-                    doorBellState.Source = doorBellImages.Img1();
-                else 
-                    doorBellState.Source = null;   
+                FrontDoorControl.DoorStatus doorStatus;
+                bool valid = _frontDoorControl.GetDoorStatus(out doorStatus);
+                if (valid)
+                    ShowDoorStatus(doorStatus);
+                _doorStatusRefreshCount = DOOR_STATUS_REFRESH_SECS;
             }
 
             // Check for auto-hide required
