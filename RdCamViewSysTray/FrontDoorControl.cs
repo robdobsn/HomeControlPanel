@@ -24,11 +24,20 @@ namespace RdWebCamSysTrayApp
             public bool innerLocked = false;
             public bool bellPressed = false;
 
+            public DoorStatus()
+            {
+            }
+
+            public DoorStatus(string s)
+            {
+                Set(s);
+            }
+
             public void Set(string s)
             {
                 try
                 {
-                    string[] sVals = s.Split(new char[] { ',' });
+                    string[] sVals = s.Split(',');
                     tagId = sVals[0];
                     tagPresentInfo = sVals[1];
                     mainLocked = (sVals[2] == "Locked");
