@@ -117,6 +117,7 @@ namespace RdWebCamSysTrayApp
 
         public void OnListenTimoutTimer(object source, ElapsedEventArgs e)
         {
+            _timerForListeningForAFixedTime.Stop();
             Stop();
         }
 
