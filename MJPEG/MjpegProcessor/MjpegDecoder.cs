@@ -41,7 +41,9 @@ namespace MjpegProcessor
 		private readonly byte[] JpegHeader = new byte[] { 0xff, 0xd8 };
 
 		// pull down 1024 bytes at a time
-		private const int ChunkSize = 1024;
+		private const int ChunkSize = 8192;
+
+        private const int MAX_BLOCKS_IN_FRAME = 250;
 
 		// used to cancel reading the stream
 		private bool _streamActive;
@@ -102,7 +104,9 @@ namespace MjpegProcessor
 			request.AllowReadStreamBuffering = false;
 #endif
 			// asynchronously get a response
-			request.BeginGetResponse(OnGetResponse, request);
+            _streamActive = true;
+
+            request.BeginGetResponse(OnGetResponse, request);
 		}
 
 		public void StopStream()
@@ -140,8 +144,6 @@ namespace MjpegProcessor
 				Stream s = resp.GetResponseStream();
 				BinaryReader br = new BinaryReader(s);
 
-				_streamActive = true;
-
 				byte[] buff = br.ReadBytes(ChunkSize);
 
 				while (_streamActive)
@@ -155,7 +157,7 @@ namespace MjpegProcessor
 						int size = buff.Length - imageStart;
 						Array.Copy(buff, imageStart, imageBuffer, 0, size);
 
-						while(true)
+						for (int ii = 0; ii < MAX_BLOCKS_IN_FRAME; ii++)
 						{
 							buff = br.ReadBytes(ChunkSize);
 
