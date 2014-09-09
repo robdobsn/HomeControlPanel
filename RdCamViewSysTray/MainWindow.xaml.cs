@@ -223,6 +223,7 @@ namespace RdWebCamSysTrayApp
             _autoHideRequiredSecs = autoHideSecs;
             BringWindowToFront();
             StartVideo();
+            listenToAxisCamera.Start();
             logger.Info("Popup Shown");
         }
 
@@ -309,6 +310,7 @@ namespace RdWebCamSysTrayApp
         private void DoorbellRingCallback(IAsyncResult ar)
         {
             logger.Info("Doorbell callback {0}", ar.ToString());
+            bool popupRequired = false;
             try
             {
                 // Get broadcast
@@ -317,6 +319,7 @@ namespace RdWebCamSysTrayApp
                 byte[] received = _udpClientForDoorbellListener.EndReceive(ar, ref remoteIpEndPoint);
                 string recvStr = Encoding.UTF8.GetString(received, 0, received.Length);
                 FrontDoorControl.DoorStatus doorStatus = new FrontDoorControl.DoorStatus(recvStr);
+                popupRequired = doorStatus.bellPressed;
                 this.Dispatcher.BeginInvoke(
                     (Action)delegate()
                         {
@@ -335,12 +338,15 @@ namespace RdWebCamSysTrayApp
                 _udpClientForDoorbellListener.BeginReceive(new AsyncCallback(DoorbellRingCallback), null);
 
                 // Popup window and start listing to audio from camera
-                System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
-                        (System.Windows.Forms.MethodInvoker)delegate()
-                            {
-                                ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
-                                listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
-                            });
+                if (popupRequired)
+                {
+                    System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
+                            (System.Windows.Forms.MethodInvoker)delegate()
+                                {
+                                    ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
+                                    listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
+                                });
+                }
             }
             catch (Exception excp)
             {

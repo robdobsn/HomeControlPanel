@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Express 2012 for Windows Desktop
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RdCamViewSysTray", ""RdCamViewSysTray\RdCamViewSysTray.csproj", "{92B7E72D-C827-4B0F-AC82-B80984DBE5CB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RdCamViewSysTray", "RdCamViewSysTray\RdCamViewSysTray.csproj", "{92B7E72D-C827-4B0F-AC82-B80984DBE5CB}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Neodym", "mathnet-neodym\src\app\MathNet.Neodym\Library\Neodym.csproj", "{5B1D0091-5B3B-4F66-A296-3BCF431FCF15}"
 EndProject
