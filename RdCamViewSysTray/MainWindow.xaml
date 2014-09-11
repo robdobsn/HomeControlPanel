@@ -87,24 +87,11 @@
                 <Button Content="Down" Height="26" x:Name="RightMidDownButton" Width="91" Click="RightMidDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="3" />
                 <Button Content="Down" Height="26" x:Name="RightDownButton" Width="91" Click="RightDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="4" />
             </Grid>
-            <Grid Height="Auto" Margin="0,10,0,0" Grid.Column="1" Grid.Row="2">
-                <Grid.RowDefinitions>
-                    <RowDefinition Height="90" />
-                    <RowDefinition Height="30" />
-                    <RowDefinition Height="30" />
-                    <RowDefinition Height="30" />
-                    <RowDefinition Height="30" />
-                </Grid.RowDefinitions>
-                <Grid.ColumnDefinitions>
-                    <ColumnDefinition Width="95" />
-                    <ColumnDefinition Width="95" />
-                    <ColumnDefinition Width="95" />
-                    <ColumnDefinition Width="95" />
-                    <ColumnDefinition Width="95"/>
-                </Grid.ColumnDefinitions>
-                <Button x:Name="SquirtButton" Height="118" HorizontalAlignment="Left" VerticalAlignment="Top" Width="332" BorderBrush="#FFCCCCCC" Grid.ColumnSpan="5" Margin="68,32,0,0" Click="SquirtButton_Click" Grid.RowSpan="3">
+            <Grid Height="Auto"  Margin="0,10,0,-57" Grid.Column="1" Grid.Row="2">
+                <Button x:Name="SquirtButton" Height="118" HorizontalAlignment="Left" VerticalAlignment="Top" Width="332" BorderBrush="#FFCCCCCC" Grid.ColumnSpan="5" Margin="74,10,0,0" Click="SquirtButton_Click" Grid.RowSpan="3">
                     <Image Source="res/sprayimgwithcat.png" Height="108" Width="322"/>
                 </Button>
+                <Image x:Name="image4" Stretch="Fill" Margin="0,133,0,0" />
             </Grid>
         </Grid>
     </StackPanel>

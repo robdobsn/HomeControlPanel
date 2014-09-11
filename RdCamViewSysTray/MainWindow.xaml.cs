@@ -37,12 +37,14 @@ namespace RdWebCamSysTrayApp
         private MjpegDecoder _mjpeg1;
         private MjpegDecoder _mjpeg2;
         private MjpegDecoder _mjpeg3;
+        private MjpegDecoder _mjpeg4;
         private int rotationAngle = 0;
         private TalkToAxisCamera talkToAxisCamera;
         private ListenToAxisCamera listenToAxisCamera;
         private const string frontDoorCameraIPAddress = "192.168.0.210";
         private const string secondCameraIPAddress = "192.168.0.211";
         private const string thirdCameraIPAddress = "192.168.0.213";
+        private const string fourthCameraIPAddress = "192.168.0.166";
         private const string frontDoorIPAddress = "192.168.0.221";
         private const string catDeterrentIPAddress = "192.168.0.223";
         private const string officeBlindsIPAddress = "192.168.0.220";
@@ -136,6 +138,8 @@ namespace RdWebCamSysTrayApp
             _mjpeg2.FrameReady += mjpeg2_FrameReady;
             _mjpeg3 = new MjpegDecoder();
             _mjpeg3.FrameReady += mjpeg3_FrameReady;
+            _mjpeg4 = new MjpegDecoder();
+            _mjpeg4.FrameReady += mjpeg4_FrameReady;
 
             // Volume control
             _localAudioDevices = new AudioDevices();
@@ -245,6 +249,7 @@ namespace RdWebCamSysTrayApp
             _mjpeg1.ParseStream(new Uri("http://" + frontDoorCameraIPAddress + "/axis-cgi/mjpg/video.cgi"));
             _mjpeg2.ParseStream(new Uri("http://" + secondCameraIPAddress + "/img/video.mjpeg"));
             _mjpeg3.ParseStream(new Uri("http://" + thirdCameraIPAddress + "/img/video.mjpeg"));
+            _mjpeg4.ParseStream(new Uri("http://" + fourthCameraIPAddress + "/axis-cgi/mjpg/video.cgi"));
         }
 
         private void StopVideo()
@@ -252,6 +257,7 @@ namespace RdWebCamSysTrayApp
             _mjpeg1.StopStream();
             _mjpeg2.StopStream();
             _mjpeg3.StopStream();
+            _mjpeg4.StopStream();
         }
 
         private void mjpeg1_FrameReady(object sender, FrameReadyEventArgs e)
@@ -283,6 +289,13 @@ namespace RdWebCamSysTrayApp
         private void mjpeg3_FrameReady(object sender, FrameReadyEventArgs e)
         {
             image3.Source = e.BitmapImage;
+        }
+
+        private void mjpeg4_FrameReady(object sender, FrameReadyEventArgs e)
+        {
+            Int32Rect cropRect = new Int32Rect(400, 380, 300, 200);
+            BitmapSource croppedImage = new CroppedBitmap(e.BitmapImage, cropRect);
+            image4.Source = croppedImage;
         }
 
         private void StartListen_Click(object sender, RoutedEventArgs e)
