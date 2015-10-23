@@ -90,26 +90,36 @@ namespace RdWebCamSysTrayApp
             ControlDoor("inner-lock");
         }
 
-        private async void ControlDoor(string doorCommand)
+        private void ControlDoor(string doorCommand)
         {
             try
             {
-                // Create a New HttpClient object.
-                HttpClient client = new HttpClient();
+                Uri uri = new Uri("http://" + _doorIPAddress + "/" + doorCommand);
 
-                HttpResponseMessage response = await client.GetAsync("http://" + _doorIPAddress + "/" + doorCommand);
-                response.EnsureSuccessStatusCode();
-                string responseBody = await response.Content.ReadAsStringAsync();
-                // Above three lines can be replaced with new helper method in following line 
-                // string body = await client.GetStringAsync(uri);
+                // Using WebClient as can't get HttpClient to not block
+                WebClient requester = new WebClient();
+                requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_req_completed);
+                requester.OpenReadAsync(uri);
 
-                logger.Info("FrontDoorControl::ControlDoor response {0}", responseBody);
+                logger.Info("FrontDoorControl::ControlDoor " + doorCommand);
             }
             catch (HttpRequestException excp)
             {
                 logger.Error("FrontDoorControl::ControlDoor exception {0}", excp.Message);
             }
         }
+
+        private void web_req_completed(object sender, OpenReadCompletedEventArgs e)
+        {
+            if (e.Error == null)
+            {
+                logger.Info("FrontDoorControl::ControlDoor ok");
+            }
+            else
+            {
+                logger.Info("FrontDoorControl::ControlDoor error {0}", e.Error.ToString());
+            }
+        }           
 
         private void OnDoorStatusTimer(object source, ElapsedEventArgs e)
         {

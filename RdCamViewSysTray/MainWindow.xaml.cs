@@ -56,7 +56,6 @@ namespace RdWebCamSysTrayApp
         private AudioDevices _localAudioDevices;
         private int _timeToListenAfterDoorbellRingInSecs = 300;
         private System.Windows.Controls.Control ControlToReceiveFocus;
-        private DispatcherTimer dtimer;
         private EasyButtonImage doorLockedImages;
         private EasyButtonImage doorClosedImages;
         private EasyButtonImage doorBellImages;
@@ -68,6 +67,7 @@ namespace RdWebCamSysTrayApp
         private const int AUTO_HIDE_AFTER_MANUAL_SHOW_SECS = 120;
         private const int DOOR_STATUS_REFRESH_SECS = 30;
         private int _doorStatusRefreshCount = 0;
+        private DispatcherTimer _dTimer = new DispatcherTimer();
 
         public MainWindow()
         {
@@ -177,10 +177,9 @@ namespace RdWebCamSysTrayApp
             _frontDoorControl.StartUpdates();
 
             // Start update timer for status
-            dtimer = new DispatcherTimer();
-            dtimer.Tick += new EventHandler(dtimer_Tick);
-            dtimer.Interval = new TimeSpan(0, 0, 1);
-            dtimer.Start();
+            _dTimer.Tick += new EventHandler(dtimer_Tick);
+            _dTimer.Interval = new TimeSpan(0, 0, 1);
+            _dTimer.Start();
 
             // Log startup
             logger.Info("App Started");
@@ -241,6 +240,10 @@ namespace RdWebCamSysTrayApp
 
         public void ExitApp(object sender, EventArgs e)
         {
+            HidePopupWindow();
+            _dTimer.Stop();
+            StopVideo(true);
+            StopTalkAndListen();
             System.Windows.Application.Current.Shutdown();
         }
 
@@ -252,12 +255,19 @@ namespace RdWebCamSysTrayApp
             _mjpeg4.ParseStream(new Uri("http://" + fourthCameraIPAddress + "/axis-cgi/mjpg/video.cgi"));
         }
 
-        private void StopVideo()
+        private void StopVideo(bool unsubscribeEvents = false)
         {
             _mjpeg1.StopStream();
             _mjpeg2.StopStream();
             _mjpeg3.StopStream();
             _mjpeg4.StopStream();
+            if (unsubscribeEvents)
+            {
+                _mjpeg1.FrameReady -= mjpeg1_FrameReady;
+                _mjpeg2.FrameReady -= mjpeg2_FrameReady;
+                _mjpeg3.FrameReady -= mjpeg3_FrameReady;
+                _mjpeg4.FrameReady -= mjpeg4_FrameReady;
+            }
         }
 
         private void mjpeg1_FrameReady(object sender, FrameReadyEventArgs e)
@@ -476,27 +486,37 @@ namespace RdWebCamSysTrayApp
 
         }
 
-        private async void SquirtButton_Click(object sender, RoutedEventArgs e)
+        private void SquirtButton_Click(object sender, RoutedEventArgs e)
         {
             try
             {
-                // Create a New HttpClient object.
-                HttpClient client = new HttpClient();
+                Uri uri = new Uri("http://" + catDeterrentIPAddress + "/control.cgi?squirt=1");
 
-                HttpResponseMessage response = await client.GetAsync("http://" + catDeterrentIPAddress + "/control.cgi?squirt=1");
-                response.EnsureSuccessStatusCode();
-                string responseBody = await response.Content.ReadAsStringAsync();
-                // Above three lines can be replaced with new helper method in following line 
-                // string body = await client.GetStringAsync(uri);
+                // Using WebClient as can't get HttpClient to not block
+                WebClient requester = new WebClient();
+                requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_req_completed);
+                requester.OpenReadAsync(uri);
 
-                logger.Info("SquirtButton_Click response {0}", responseBody);
+                logger.Info("MainWindow::SquirtButton activated");
             }
             catch (HttpRequestException excp)
             {
-                logger.Info("MainWindow::SquirtButton_Click exception {0}", excp.Message);
+                logger.Error("MainWindow::SquirtButton exception {0}", excp.Message);
             }
             ControlToReceiveFocus.Focus();
         }
+
+        private void web_req_completed(object sender, OpenReadCompletedEventArgs e)
+        {
+            if (e.Error == null)
+            {
+                logger.Info("MainWindow::SquirtButton ok");
+            }
+            else
+            {
+                logger.Info("MainWindow::SquirtButton error {0}", e.Error.ToString());
+            }
+        }           
 
         private void RobsUpButton_Click(object sender, RoutedEventArgs e)
         {

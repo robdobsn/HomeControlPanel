@@ -10,8 +10,8 @@ namespace RdWebCamSysTrayApp
     class ImageBuffer
     {
         private BitmapImage[] _imgBuf;
-        private int _tailIdx = 0;
-        private int _len = 0;
+        //private int _tailIdx = 0;
+        //private int _len = 0;
 
         public ImageBuffer(int bufferSize)
         {
