@@ -132,14 +132,13 @@ namespace RdWebCamSysTrayApp
 
         private void requestAudio()
         {
-            //Our getVars, to test the get of our php. 
-            //We can get a page without any of these vars too though.
             string getVars = "";
             //Initialization
             try
             {
                 HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(string.Format("http://" + _ipAddress + "/axis-cgi/audio/receive.cgi?httptype=singlepart", getVars));
                 webReq.Method = "GET";
+                webReq.AllowReadStreamBuffering = false;
                 webReq.BeginGetResponse(new AsyncCallback(GetAudioAsync), webReq);
             }
             catch (Exception excp)
@@ -181,7 +180,7 @@ namespace RdWebCamSysTrayApp
 
                         // Play the audio
                         waveOut.Play();
-                        Thread.Sleep(1);
+//                        Thread.Sleep(1);
                     }
                 }
             }

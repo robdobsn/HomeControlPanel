@@ -1,4 +1,5 @@
-﻿//#define LISTEN_TO_CAMERA
+﻿#define LISTEN_TO_CAMERA
+#define TALK_TO_CAMERA
 
 using System;
 using System.Collections.Generic;
@@ -40,7 +41,7 @@ namespace RdWebCamSysTrayApp
         private MjpegDecoder _mjpeg1;
         private MjpegDecoder _mjpeg2;
         private MjpegDecoder _mjpeg3;
-        private MjpegDecoder _mjpeg4;
+        //private MjpegDecoder _mjpeg4;
         private int rotationAngle = 0;
 #if (TALK_TO_CAMERA)
         private TalkToAxisCamera talkToAxisCamera;
@@ -55,6 +56,8 @@ namespace RdWebCamSysTrayApp
         private const string frontDoorIPAddress = "192.168.0.221";
         private const string catDeterrentIPAddress = "192.168.0.223";
         private const string officeBlindsIPAddress = "192.168.0.220";
+        private const string ledMatrixIpAddress = "192.168.0.229";
+        private List<string> domoticzIPAddresses = new List<string>(new string[] { "192.168.0.232", "192.168.0.233", "192.168.0.234", "192.168.0.235" });
         private const string configFileSource = "//macallan/main/RobDev/ITConfig/RdCamViewSysTray.txt";
         private System.Windows.Forms.NotifyIcon _notifyIcon;
         private IPEndPoint _ipEndPointBroadcastListen;
@@ -69,6 +72,8 @@ namespace RdWebCamSysTrayApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private const int _udpDoorbellPort = 34343;
         private BlindsControl _officeBlindsControl;
+        private DomoticzControl _domoticzControl;
+        private LedMatrix _ledMatrix;
         private int _autoHideRequiredSecs = 0;
         private const int AUTO_HIDE_AFTER_AUTO_SHOW_SECS = 30;
         private const int AUTO_HIDE_AFTER_MANUAL_SHOW_SECS = 120;
@@ -138,6 +143,12 @@ namespace RdWebCamSysTrayApp
             // Office blinds
             _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
 
+            // Domoticz
+            _domoticzControl = new DomoticzControl(domoticzIPAddresses);
+
+            // LedMatrix
+            _ledMatrix = new LedMatrix(ledMatrixIpAddress);
+
             // Create the video decoder
             _mjpeg1 = new MjpegDecoder();
             _mjpeg1.FrameReady += mjpeg1_FrameReady;
@@ -145,8 +156,8 @@ namespace RdWebCamSysTrayApp
             _mjpeg2.FrameReady += mjpeg2_FrameReady;
             _mjpeg3 = new MjpegDecoder();
             _mjpeg3.FrameReady += mjpeg3_FrameReady;
-            _mjpeg4 = new MjpegDecoder();
-            _mjpeg4.FrameReady += mjpeg4_FrameReady;
+            //_mjpeg4 = new MjpegDecoder();
+            //_mjpeg4.FrameReady += mjpeg4_FrameReady;
 
             // Volume control
             _localAudioDevices = new AudioDevices();
@@ -255,7 +266,8 @@ namespace RdWebCamSysTrayApp
             _dTimer.Stop();
             StopVideo(true);
             StopTalkAndListen();
-            System.Windows.Application.Current.Shutdown();
+            if (System.Windows.Application.Current != null)
+                System.Windows.Application.Current.Shutdown();
         }
 
         private void StartVideo()
@@ -263,7 +275,7 @@ namespace RdWebCamSysTrayApp
             _mjpeg1.ParseStream(new Uri("http://" + frontDoorCameraIPAddress + "/axis-cgi/mjpg/video.cgi"));
             _mjpeg2.ParseStream(new Uri("http://" + secondCameraIPAddress + "/img/video.mjpeg"));
             _mjpeg3.ParseStream(new Uri("http://" + thirdCameraIPAddress + "/img/video.mjpeg"));
-            _mjpeg4.ParseStream(new Uri("http://" + fourthCameraIPAddress + "/axis-cgi/mjpg/video.cgi"));
+            //_mjpeg4.ParseStream(new Uri("http://" + fourthCameraIPAddress + "/axis-cgi/mjpg/video.cgi"));
         }
 
         private void StopVideo(bool unsubscribeEvents = false)
@@ -271,13 +283,13 @@ namespace RdWebCamSysTrayApp
             _mjpeg1.StopStream();
             _mjpeg2.StopStream();
             _mjpeg3.StopStream();
-            _mjpeg4.StopStream();
+            //_mjpeg4.StopStream();
             if (unsubscribeEvents)
             {
                 _mjpeg1.FrameReady -= mjpeg1_FrameReady;
                 _mjpeg2.FrameReady -= mjpeg2_FrameReady;
                 _mjpeg3.FrameReady -= mjpeg3_FrameReady;
-                _mjpeg4.FrameReady -= mjpeg4_FrameReady;
+                //_mjpeg4.FrameReady -= mjpeg4_FrameReady;
             }
         }
 
@@ -312,12 +324,12 @@ namespace RdWebCamSysTrayApp
             image3.Source = e.BitmapImage;
         }
 
-        private void mjpeg4_FrameReady(object sender, FrameReadyEventArgs e)
-        {
-            Int32Rect cropRect = new Int32Rect(400, 380, 300, 200);
-            BitmapSource croppedImage = new CroppedBitmap(e.BitmapImage, cropRect);
-            image4.Source = croppedImage;
-        }
+        //private void mjpeg4_FrameReady(object sender, FrameReadyEventArgs e)
+        //{
+        //    Int32Rect cropRect = new Int32Rect(400, 380, 300, 200);
+        //    BitmapSource croppedImage = new CroppedBitmap(e.BitmapImage, cropRect);
+        //    image4.Source = croppedImage;
+        //}
 
         private void StartListen_Click(object sender, RoutedEventArgs e)
         {
@@ -633,5 +645,26 @@ namespace RdWebCamSysTrayApp
             ControlToReceiveFocus.Focus();
         }
 
+        private void OfficeLightsMoodButton_Click(object sender, RoutedEventArgs e)
+        {
+            _domoticzControl.SendGroupCommand("Office - Mood");
+        }
+
+        private void OfficeLightsOffButton_Click(object sender, RoutedEventArgs e)
+        {
+            _domoticzControl.SendGroupCommand("Office - Off");
+        }
+        private void TextMatrixSendButton_Click(object sender, RoutedEventArgs e)
+        {
+            _ledMatrix.SendMessage(LEDMatrixText.Text);
+        }
+        private void TextMatrixStopAlertButton_Click(object sender, RoutedEventArgs e)
+        {
+            _ledMatrix.StopAlert();
+        }
+        private void TextMatrixClearButton_Click(object sender, RoutedEventArgs e)
+        {
+            _ledMatrix.Clear();
+        }
     }
 }
