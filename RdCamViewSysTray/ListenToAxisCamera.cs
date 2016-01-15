@@ -181,7 +181,7 @@ namespace RdWebCamSysTrayApp
 
                         // Play the audio
                         waveOut.Play();
-                        Thread.Sleep(50);
+                        Thread.Sleep(1);
                     }
                 }
             }

@@ -1,4 +1,6 @@
-﻿using System;
+﻿//#define LISTEN_TO_CAMERA
+
+using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
@@ -25,6 +27,7 @@ using MjpegProcessor;
 using System.Net.Http;
 using NLog;
 
+
 namespace RdWebCamSysTrayApp
 {
 
@@ -39,8 +42,12 @@ namespace RdWebCamSysTrayApp
         private MjpegDecoder _mjpeg3;
         private MjpegDecoder _mjpeg4;
         private int rotationAngle = 0;
+#if (TALK_TO_CAMERA)
         private TalkToAxisCamera talkToAxisCamera;
+#endif
+#if (LISTEN_TO_CAMERA)
         private ListenToAxisCamera listenToAxisCamera;
+#endif
         private const string frontDoorCameraIPAddress = "192.168.0.210";
         private const string secondCameraIPAddress = "192.168.0.211";
         private const string thirdCameraIPAddress = "192.168.0.213";
@@ -161,10 +168,12 @@ namespace RdWebCamSysTrayApp
             {
                 logger.Error("Cannot read username and password for Axis camera from " + configFileSource + " excp " + excp.ToString());
             }
-
+#if (TALK_TO_CAMERA)
             talkToAxisCamera = new TalkToAxisCamera(frontDoorCameraIPAddress, 80, username, password, _localAudioDevices);
+#endif
+#if (LISTEN_TO_CAMERA)
             listenToAxisCamera = new ListenToAxisCamera(frontDoorCameraIPAddress, _localAudioDevices);
-
+#endif
             // Start Video
             StartVideo();
 
@@ -226,7 +235,9 @@ namespace RdWebCamSysTrayApp
             _autoHideRequiredSecs = autoHideSecs;
             BringWindowToFront();
             StartVideo();
+#if (LISTEN_TO_CAMERA)
             listenToAxisCamera.Start();
+#endif
             logger.Info("Popup Shown");
         }
 
@@ -310,24 +321,32 @@ namespace RdWebCamSysTrayApp
 
         private void StartListen_Click(object sender, RoutedEventArgs e)
         {
+#if (LISTEN_TO_CAMERA)
             if (!listenToAxisCamera.IsListening())
                 listenToAxisCamera.Start();
+#endif
             ControlToReceiveFocus.Focus();
 
         }
 
         private void StopListen_Click(object sender, RoutedEventArgs e)
         {
+#if (LISTEN_TO_CAMERA)
             if (listenToAxisCamera.IsListening())
                 listenToAxisCamera.Stop();
+#endif
             ControlToReceiveFocus.Focus();
 
         }
 
         private void StopTalkAndListen()
         {
+#if (TALK_TO_CAMERA)
             talkToAxisCamera.StopTalk();
+#endif
+#if (LISTEN_TO_CAMERA)
             listenToAxisCamera.Stop();
+#endif
         }
 
         private void DoorbellRingCallback(IAsyncResult ar)
@@ -367,7 +386,9 @@ namespace RdWebCamSysTrayApp
                             (System.Windows.Forms.MethodInvoker)delegate()
                                 {
                                     ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
+#if (LISTEN_TO_CAMERA)
                                     listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
+#endif
                                 });
                 }
             }
@@ -425,19 +446,23 @@ namespace RdWebCamSysTrayApp
 
         private void TalkButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
+#if (TALK_TO_CAMERA)
             if (!talkToAxisCamera.IsTalking())
             {
                 // TalkButton.Background = System.Windows.Media.Brushes.Red;
                 talkToAxisCamera.StartTalk();
             }
+#endif
         }
 
         private void TalkButton_PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
+#if (TALK_TO_CAMERA)
             if (talkToAxisCamera.IsTalking())
             {
                 talkToAxisCamera.StopTalk();
             }
+#endif
             ControlToReceiveFocus.Focus();
         }
 
