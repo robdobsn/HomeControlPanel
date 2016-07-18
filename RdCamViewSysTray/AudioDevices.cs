@@ -1,4 +1,5 @@
-﻿using NAudio.Wave;
+﻿#define USE_SIMPLEX_AUDIO
+using NAudio.Wave;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -203,8 +204,10 @@ namespace RdWebCamSysTrayApp
 
         public void SuppressAudioFeedback(int peakLocalMicVolume)
         {
-            return;         // This is disabled for now - using simplex audio - muting speaker when talking
+#if (USE_SIMPLEX_AUDIO)
 
+            return;         // This is disabled for now - using simplex audio - muting speaker when talking
+#else
             if (peakLocalMicVolume > _talkVolumeThresholdForFeedbackSuppress)
             {
                 if (_timeOfFirstFeedbackSuppress == DateTime.MinValue)
@@ -217,6 +220,7 @@ namespace RdWebCamSysTrayApp
 
             _oldVolume = _localAudioDevices.GetOutVolume();
             _localAudioDevices.SetOutVolume(_localAudioDevices.RequiredOutVolLevel);*/
+#endif
         }
 
         private void OnFeedbackSuppressTimer(object source, ElapsedEventArgs e)

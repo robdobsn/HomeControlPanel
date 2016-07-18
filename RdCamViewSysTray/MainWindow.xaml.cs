@@ -43,6 +43,7 @@ namespace RdWebCamSysTrayApp
         private MjpegDecoder _mjpeg3;
         //private MjpegDecoder _mjpeg4;
         private int rotationAngle = 0;
+        bool listenToCameraOnShow = false;
 #if (TALK_TO_CAMERA)
         private TalkToAxisCamera talkToAxisCamera;
 #endif
@@ -91,7 +92,7 @@ namespace RdWebCamSysTrayApp
             // Position window
             Left = Screen.PrimaryScreen.WorkingArea.Width - Width;
             Top = Screen.PrimaryScreen.WorkingArea.Height - Height;
-            ResizeMode = System.Windows.ResizeMode.NoResize;
+            ResizeMode = System.Windows.ResizeMode.CanResizeWithGrip;
             ControlToReceiveFocus = this.Settings;
 
             // Notify icon
@@ -247,7 +248,8 @@ namespace RdWebCamSysTrayApp
             BringWindowToFront();
             StartVideo();
 #if (LISTEN_TO_CAMERA)
-            listenToAxisCamera.Start();
+            if (this.listenToCameraOnShow)
+                listenToAxisCamera.Start();
 #endif
             logger.Info("Popup Shown");
         }

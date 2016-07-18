@@ -47,9 +47,9 @@ namespace RdWebCamSysTrayApp
 
         private class Scene
         {
-            public string Name;
-            public string idx;
-            public string Type;
+            public string Name = "";
+            public string idx = "";
+            public string Type = "";
         };
 
         private void getScenesCompleted(object sender, OpenReadCompletedEventArgs e)
