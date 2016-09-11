@@ -71,16 +71,23 @@ namespace RdWebCamSysTrayApp
                 mainLocked = (door0IsLocked == "true") ? true : false;
                 mainOpen = (door0OpenSense == "Open") ? true : false;
                 innerLocked = (door1IsLocked == "true") ? true : false;
-                bellPressed = (bellSense == "true") ? true : false;
+                bellPressed = (bellSense == "on") ? true : false;
                 tagId = cardNoPresentNow;
             }
         }
+
+        public class DoorStatusResult
+        {
+            public String result;
+        }
+
         private string _doorIPAddress;
         private Timer _doorStatusTimer;
         private DoorStatus _doorStatus = new DoorStatus();
         private DateTime _lastDoorStatusTime = DateTime.MinValue;
         private int _doorStatusRequestNotifyCount = 0;
         private const int _doorStatusRequestResetAfter = 100;
+        private bool _updateStatusRateHigh = false;
 
         public FrontDoorControl(string doorIPAddress)
         {
@@ -89,6 +96,24 @@ namespace RdWebCamSysTrayApp
             // Timer to update status
             _doorStatusTimer = new Timer(1000);
             _doorStatusTimer.Elapsed += new ElapsedEventHandler(OnDoorStatusTimer);
+        }
+
+        public void SetUpdateHighRate(bool highRate)
+        {
+            _updateStatusRateHigh = highRate;
+        }
+
+        private void CallDoorApiFunction(String functionAndArgs)
+        {
+            // Perform action through Particle API
+            Uri uri = new Uri("https://api.particle.io/v1/devices/" + Properties.Settings.Default.FrontDoorParticleDeviceID + "/apiCall?access_token=" + Properties.Settings.Default.FrontDoorParticleAccessToken);
+
+            // Using WebClient as can't get HttpClient to not block
+            WebClient requester = new WebClient();
+            requester.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
+            requester.UploadStringCompleted += new UploadStringCompletedEventHandler(web_req_completed);
+            requester.UploadStringAsync(uri, "POST", "arg=" + functionAndArgs);
+            logger.Info("FrontDoorControl::DoorAPICall " + functionAndArgs);
         }
 
         public void StartUpdates()
@@ -120,14 +145,7 @@ namespace RdWebCamSysTrayApp
         {
             try
             {
-                Uri uri = new Uri("http://" + _doorIPAddress + "/" + doorCommand);
-
-                // Using WebClient as can't get HttpClient to not block
-                WebClient requester = new WebClient();
-                requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_req_completed);
-                requester.OpenReadAsync(uri);
-
-                logger.Info("FrontDoorControl::ControlDoor " + doorCommand);
+                CallDoorApiFunction(doorCommand);
             }
             catch (HttpRequestException excp)
             {
@@ -135,15 +153,15 @@ namespace RdWebCamSysTrayApp
             }
         }
 
-        private void web_req_completed(object sender, OpenReadCompletedEventArgs e)
+        private void web_req_completed(object sender, UploadStringCompletedEventArgs e)
         {
             if (e.Error == null)
             {
-                logger.Info("FrontDoorControl::ControlDoor ok");
+                logger.Info("FrontDoorControl::DoorApiCall ok");
             }
             else
             {
-                logger.Info("FrontDoorControl::ControlDoor error {0}", e.Error.ToString());
+                logger.Info("FrontDoorControl::DoorApiCall error {0}", e.Error.ToString());
             }
         }
 
@@ -185,15 +203,17 @@ namespace RdWebCamSysTrayApp
             {
                 if (_doorStatusRequestNotifyCount == 0)
                 {
-                    string requestURI = "http://" + _doorIPAddress + "/no/" + GetLocalIPAddress() + "/34344";
-                    HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(requestURI);
-                    webReq.Method = "GET";
-                    webReq.BeginGetResponse(new AsyncCallback(DoorNotifyCallback), webReq);
+                    CallDoorApiFunction("no/" + GetLocalIPAddress() + "/34344");
+                    //string requestURI = "http://" + _doorIPAddress + "/no/" + GetLocalIPAddress() + "/34344";
+                    //HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(requestURI);
+                    //webReq.Method = "GET";
+                    //webReq.BeginGetResponse(new AsyncCallback(DoorNotifyCallback), webReq);
                 }
-                else if (_doorStatusRequestNotifyCount == 1)
+                else if (_updateStatusRateHigh ? (_doorStatusRequestNotifyCount % 5 == 2) : (_doorStatusRequestNotifyCount == 2))
                 {
-                    string requestURI = "http://" + _doorIPAddress + "/q";
-                    HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(requestURI);
+                    Uri uri = new Uri("https://api.particle.io/v1/devices/" + Properties.Settings.Default.FrontDoorParticleDeviceID + "/status?access_token=" + Properties.Settings.Default.FrontDoorParticleAccessToken);
+
+                    HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(uri);
                     webReq.Method = "GET";
                     webReq.BeginGetResponse(new AsyncCallback(DoorStatusCallback), webReq);
                 }
@@ -210,34 +230,34 @@ namespace RdWebCamSysTrayApp
         public bool GetDoorStatus(out DoorStatus doorStatus)
         {
             doorStatus = _doorStatus;
-            return (DateTime.Now-_lastDoorStatusTime).TotalSeconds < 3;                
+            return (DateTime.Now-_lastDoorStatusTime).TotalSeconds < 30;                
         }
 
 
-        private void DoorNotifyCallback(IAsyncResult res)
-        {
-            try
-            {
-                HttpWebRequest request = (HttpWebRequest)res.AsyncState;
-                if (request == null)
-                    return;
-                HttpWebResponse response = (HttpWebResponse)request.EndGetResponse(res);
-                if (response == null)
-                    return;
-                string body = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                logger.Info("NotifyRequest returned {0}", body);
-            }
-            catch (Exception excp)
-            {
-                logger.Error("Exception in FrontDoorControl::DoorNotifyCallback {0}", excp.Message);
-            }
+        //private void DoorNotifyCallback(IAsyncResult res)
+        //{
+        //    try
+        //    {
+        //        HttpWebRequest request = (HttpWebRequest)res.AsyncState;
+        //        if (request == null)
+        //            return;
+        //        HttpWebResponse response = (HttpWebResponse)request.EndGetResponse(res);
+        //        if (response == null)
+        //            return;
+        //        string body = new StreamReader(response.GetResponseStream()).ReadToEnd();
+        //        logger.Info("NotifyRequest returned {0}", body);
+        //    }
+        //    catch (Exception excp)
+        //    {
+        //        logger.Error("Exception in FrontDoorControl::DoorNotifyCallback {0}", excp.Message);
+        //    }
 
-        }
+        //}
 
         private void DoorStatusCallback(IAsyncResult res)
         {
             try
-            {
+             {
                 HttpWebRequest request = (HttpWebRequest)res.AsyncState;
                 if (request == null)
                     return;
@@ -245,11 +265,14 @@ namespace RdWebCamSysTrayApp
                 if (response == null)
                     return;
                 string body = new StreamReader(response.GetResponseStream()).ReadToEnd();
+                Console.WriteLine("DoorStatusResp " + body);
 
-                _doorStatus = JsonConvert.DeserializeObject<DoorStatus>(body);
+//                body = "{ 'result': { 'door0IsLocked': 'true' } }";
+                string resultStr = JsonConvert.DeserializeObject<DoorStatusResult>(body).result;
+                Console.WriteLine("DoorStatus result " + resultStr);
+                _doorStatus = JsonConvert.DeserializeObject<DoorStatus>(resultStr);
                 _doorStatus.Update();
 
-                // Console.WriteLine("DoorStatusResp " + body);
                 _lastDoorStatusTime = DateTime.Now;
 
             }

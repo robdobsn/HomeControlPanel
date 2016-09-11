@@ -58,7 +58,7 @@ namespace RdWebCamSysTrayApp
         private const string catDeterrentIPAddress = "192.168.0.223";
         private const string officeBlindsIPAddress = "192.168.0.220";
         private const string ledMatrixIpAddress = "192.168.0.229";
-        private List<string> domoticzIPAddresses = new List<string>(new string[] { "192.168.0.232", "192.168.0.233", "192.168.0.234", "192.168.0.235" });
+        private List<string> domoticzIPAddresses = new List<string>(new string[] { "192.168.0.232", "192.168.0.233", "192.168.0.234", "192.168.0.235", "192.168.0.236" });
         private const string configFileSource = "//macallan/main/RobDev/ITConfig/RdCamViewSysTray.txt";
         private System.Windows.Forms.NotifyIcon _notifyIcon;
         //private IPEndPoint _ipEndPointBroadcastListen;
@@ -80,7 +80,7 @@ namespace RdWebCamSysTrayApp
         private int _autoHideRequiredSecs = 0;
         private const int AUTO_HIDE_AFTER_AUTO_SHOW_SECS = 30;
         private const int AUTO_HIDE_AFTER_MANUAL_SHOW_SECS = 120;
-        private const int DOOR_STATUS_REFRESH_SECS = 30;
+        private const int DOOR_STATUS_REFRESH_SECS = 2;
         private int _doorStatusRefreshCount = 0;
         private DispatcherTimer _dTimer = new DispatcherTimer();
 
@@ -272,6 +272,7 @@ namespace RdWebCamSysTrayApp
             if (this.listenToCameraOnShow)
                 listenToAxisCamera.Start();
 #endif
+            _frontDoorControl.SetUpdateHighRate(true);
             logger.Info("Popup Shown");
         }
 
@@ -280,6 +281,7 @@ namespace RdWebCamSysTrayApp
             logger.Info("Popup Hidden");
             StopVideo();
             StopTalkAndListen();
+            _frontDoorControl.SetUpdateHighRate(false);
             this.Hide();
         }
 
@@ -571,6 +573,7 @@ namespace RdWebCamSysTrayApp
                 doorBellState.Source = doorBellImages.Img1();
             else
                 doorBellState.Source = null;
+            logger.Info("Bell Pressed {0}\r\n", doorStatus.bellPressed);
         }
 
         private void dtimer_Tick(object sender, EventArgs e)
