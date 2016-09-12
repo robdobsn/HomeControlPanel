@@ -19,18 +19,18 @@ namespace RdWebCamSysTrayApp
        
         public class DoorStatus
         {
-            public string door0IsLocked;
-            public string door0OpenSense;
-            public string door0MsBeforeRelock;
-            public string door1IsLocked;
-            public string door1OpenSense;
-            public string door1MsBeforeRelock;
-            public string bellSense;
-            public string cardNoPresentNow;
-            public string learnModeActive;
-            public string learnModeTimoutInMs;
-            public string learnModeUserName;
-            public string learnModeLastUserAddedIdx;
+            public string d0Lk;
+            public string d0Op;
+            public string d0MsRelock;
+            public string d1Lk;
+            public string d1Op;
+            public string d1MsRelock;
+            public string bell;
+            public string card;
+            public string learn;
+            public string learnMs;
+            public string learnUserName;
+            public string learnLastUserIdx;
 
             public string tagId = "";
             public string tagPresentInfo = "";
@@ -68,11 +68,11 @@ namespace RdWebCamSysTrayApp
 
             public void Update()
             {
-                mainLocked = (door0IsLocked == "true") ? true : false;
-                mainOpen = (door0OpenSense == "Open") ? true : false;
-                innerLocked = (door1IsLocked == "true") ? true : false;
-                bellPressed = (bellSense == "on") ? true : false;
-                tagId = cardNoPresentNow;
+                mainLocked = (d0Lk == "Y") ? true : false;
+                mainOpen = (d0Op == "Open") ? true : false;
+                innerLocked = (d1Lk == "Y") ? true : false;
+                bellPressed = (bell == "Y") ? true : false;
+                tagId = card;
             }
         }
 
