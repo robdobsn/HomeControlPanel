@@ -19,12 +19,15 @@ namespace RdWebCamSysTrayApp
        
         public class DoorStatus
         {
-            public string d0Lk;
-            public string d0Op;
-            public string d0MsRelock;
-            public string d1Lk;
-            public string d1Op;
-            public string d1MsRelock;
+            public class DoorInfo
+            {
+                public string name;
+                public string num;
+                public string locked;
+                public string open;
+                public string ms; 
+            }
+            public DoorInfo[] doors;
             public string bell;
             public string card;
             public string learn;
@@ -68,9 +71,9 @@ namespace RdWebCamSysTrayApp
 
             public void Update()
             {
-                mainLocked = (d0Lk == "Y") ? true : false;
-                mainOpen = (d0Op == "Open") ? true : false;
-                innerLocked = (d1Lk == "Y") ? true : false;
+                mainLocked = (doors[0].locked == "Y") ? true : false;
+                mainOpen = (doors[0].open == "Open") ? true : false;
+                innerLocked = (doors[1].locked == "Y") ? true : false;
                 bellPressed = (bell == "Y") ? true : false;
                 tagId = card;
             }
@@ -105,6 +108,7 @@ namespace RdWebCamSysTrayApp
 
         private void CallDoorApiFunction(String functionAndArgs)
         {
+#if USE_PARTICLE_API
             // Perform action through Particle API
             Uri uri = new Uri("https://api.particle.io/v1/devices/" + Properties.Settings.Default.FrontDoorParticleDeviceID + "/apiCall?access_token=" + Properties.Settings.Default.FrontDoorParticleAccessToken);
 
@@ -114,6 +118,16 @@ namespace RdWebCamSysTrayApp
             requester.UploadStringCompleted += new UploadStringCompletedEventHandler(web_req_completed);
             requester.UploadStringAsync(uri, "POST", "arg=" + functionAndArgs);
             logger.Info("FrontDoorControl::DoorAPICall " + functionAndArgs);
+#else
+            Uri uri = new Uri("http://" + _doorIPAddress + "/" + functionAndArgs);
+
+            // Using WebClient as can't get HttpClient to not block
+            WebClient requester = new WebClient();
+            requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_read_completed);
+            requester.OpenReadAsync(uri);
+
+            logger.Info("FrontDoorControl::ControlDoor " + functionAndArgs);
+#endif
         }
 
         public void StartUpdates()
@@ -150,6 +164,18 @@ namespace RdWebCamSysTrayApp
             catch (HttpRequestException excp)
             {
                 logger.Error("FrontDoorControl::ControlDoor exception {0}", excp.Message);
+            }
+        }
+
+        private void web_read_completed(object sender, OpenReadCompletedEventArgs e)
+        {
+            if (e.Error == null)
+            {
+                logger.Info("FrontDoorControl::DoorApiCall ok");
+            }
+            else
+            {
+                logger.Info("FrontDoorControl::DoorApiCall error {0}", e.Error.ToString());
             }
         }
 
