@@ -23,9 +23,10 @@ namespace RdWebCamSysTrayApp
         {
             try
             {
-                string[] shadeNames = { "workroom-shade", "office1-shade", "office2-shade", "office3-shade", "office4-shade" };
-                string blindsCommand = shadeNames[blindNumber] + "-" + direction + "/pulse";
-                Uri uri = new Uri("http://" + _ipAddress + "/" + blindsCommand);
+//                string[] shadeNames = { "workroom-shade", "office1-shade", "office2-shade", "office3-shade", "office4-shade" };
+//                string blindsCommand = shadeNames[blindNumber] + "-" + direction + "/pulse";
+                string blindsCommand = (blindNumber + 1).ToString() + "/" + direction + "/pulse";
+                Uri uri = new Uri("http://" + _ipAddress + "/blind/" + blindsCommand);
 
                 // Using WebClient as can't get HttpClient to not block
                 WebClient requester = new WebClient();

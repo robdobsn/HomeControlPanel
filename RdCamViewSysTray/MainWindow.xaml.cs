@@ -146,7 +146,7 @@ namespace RdWebCamSysTrayApp
             {
                 _udpClientForDoorStatus = new UdpClient(_doorControlNotifyPort);
                 _udpClientForDoorStatus.BeginReceive(new AsyncCallback(DoorStatusCallback), null);
-                logger.Info("Socket bound to door status port {1}", _doorControlNotifyPort);
+                logger.Info("Socket bound to door status port {0}", _doorControlNotifyPort);
             }
             catch (SocketException excp)
             {
