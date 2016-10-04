@@ -102,7 +102,7 @@
                     <ColumnDefinition Width="94" />
                     <ColumnDefinition Width="92"/>
                 </Grid.ColumnDefinitions>
-                <Button x:Name="SquirtButton" Height="118" HorizontalAlignment="Left" VerticalAlignment="Top" Width="332" BorderBrush="#FFCCCCCC" Grid.ColumnSpan="5" Margin="74,10,0,0" Click="SquirtButton_Click" Grid.RowSpan="4">
+                <Button x:Name="SquirtButton" Height="118" HorizontalAlignment="Left" VerticalAlignment="Top" Width="332" BorderBrush="#FFCCCCCC" Grid.ColumnSpan="5" Margin="74,10,0,0" PreviewMouseUp="SquirtButton_MouseUp" PreviewMouseDown="SquirtButton_MouseDown" Grid.RowSpan="4">
                     <Image Source="res/sprayimgwithcat.png" Height="108" Width="322"/>
                 </Button>
                 <Button Content="Office Mood" Height="26" x:Name="OfficeLightsMoodButton" Width="91" Click="OfficeLightsMoodButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="5" Grid.Column="0" />

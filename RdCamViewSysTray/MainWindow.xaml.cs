@@ -54,8 +54,8 @@ namespace RdWebCamSysTrayApp
         private const string secondCameraIPAddress = "192.168.0.211";
         private const string thirdCameraIPAddress = "192.168.0.213";
         private const string fourthCameraIPAddress = "192.168.0.166";
-        private const string frontDoorIPAddress = "192.168.0.221";
-        private const string catDeterrentIPAddress = "192.168.0.223";
+        private const string frontDoorIPAddress = "192.168.0.120";
+        private const string catDeterrentIPAddress = "192.168.0.135";
         private const string officeBlindsIPAddress = "192.168.0.220";
         private const string ledMatrixIpAddress = "192.168.0.229";
         private List<string> domoticzIPAddresses = new List<string>(new string[] { "192.168.0.232", "192.168.0.233", "192.168.0.234", "192.168.0.235", "192.168.0.236" });
@@ -64,6 +64,7 @@ namespace RdWebCamSysTrayApp
         //private IPEndPoint _ipEndPointBroadcastListen;
         //private UdpClient _udpClientForDoorbellListener;
         private UdpClient _udpClientForDoorStatus;
+        private UdpClient _udpClientForCameraMovement;
         private FrontDoorControl _frontDoorControl;
         private AudioDevices _localAudioDevices;
         private int _timeToListenAfterDoorbellRingInSecs = 300;
@@ -74,6 +75,8 @@ namespace RdWebCamSysTrayApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private const int _udpDoorbellPort = 34343;
         private const int _doorControlNotifyPort = 34344;
+        private const int _cameraMovementNotifyPort = 1010;
+        private const int _catDeterrentUDPPort = 7191;
         private BlindsControl _officeBlindsControl;
         private DomoticzControl _domoticzControl;
         private LedMatrix _ledMatrix;
@@ -157,10 +160,24 @@ namespace RdWebCamSysTrayApp
                 logger.Error("Other failed to bind to door status port {1} ({0})", excp.ToString(), _doorControlNotifyPort);
             }
 
+            try
+            {
+                _udpClientForCameraMovement = new UdpClient(_cameraMovementNotifyPort);
+                _udpClientForCameraMovement.BeginReceive(new AsyncCallback(CameraMovementCallback), null);
+                logger.Info("Socket bound to camera movement port {0}", _cameraMovementNotifyPort);
+            }
+            catch (SocketException excp)
+            {
+                logger.Error("Socket failed to bind to camera movement port {1} ({0})", excp.ToString(), _cameraMovementNotifyPort);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Other failed to bind to camera movement port {1} ({0})", excp.ToString(), _cameraMovementNotifyPort);
+            }
 
 
             // Front door
-            _frontDoorControl = new FrontDoorControl(frontDoorIPAddress);
+            _frontDoorControl = new FrontDoorControl(frontDoorIPAddress, DoorStatusRefresh);
 
             // Office blinds
             _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
@@ -386,6 +403,16 @@ namespace RdWebCamSysTrayApp
 #endif
         }
 
+        private void DoorStatusRefresh()
+        {
+            this.Dispatcher.BeginInvoke(
+                (Action)delegate ()
+                {
+                    ShowDoorStatus();
+                }
+                );
+        }
+
         private void DoorStatusCallback(IAsyncResult ar)
         {
             bool popupRequired = false;
@@ -397,15 +424,12 @@ namespace RdWebCamSysTrayApp
                 byte[] received = _udpClientForDoorStatus.EndReceive(ar, ref remoteIpEndPoint);
                 string recvStr = Encoding.UTF8.GetString(received, 0, received.Length);
                 logger.Info("Received {0}", recvStr);
-                FrontDoorControl.DoorStatus doorStatus = JsonConvert.DeserializeObject<FrontDoorControl.DoorStatus>(recvStr);
-                doorStatus.Update();
-                popupRequired = doorStatus.bellPressed;
-                this.Dispatcher.BeginInvoke(
-                    (Action)delegate ()
-                    {
-                        ShowDoorStatus(doorStatus);
-                    }
-                    );
+                _frontDoorControl.SetDoorStatusFromJson(recvStr);
+                FrontDoorControl.DoorStatus doorStatus;
+                _frontDoorControl.GetDoorStatus(out doorStatus);
+                popupRequired = doorStatus._bellPressed;
+                logger.Info("In DoorStatusCallback - Bell Pressed {0}", doorStatus._bellPressed);
+                DoorStatusRefresh();
             }
             catch (Exception excp)
             {
@@ -423,6 +447,7 @@ namespace RdWebCamSysTrayApp
                     System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
                             (System.Windows.Forms.MethodInvoker)delegate ()
                             {
+                                logger.Info("In DoorStatusCallback - Delegate show popup");
                                 ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
 #if (LISTEN_TO_CAMERA)
                                 if (this.listenToCameraOnShow)
@@ -433,59 +458,80 @@ namespace RdWebCamSysTrayApp
             }
             catch (Exception excp)
             {
-                logger.Error("Exception in MainWindow::DoorStatusCallback2 {0}", excp.Message);
+                logger.Error("Exception in MainWindow::CameraMovementCallback2 {0}", excp.Message);
             }
 
         }
 
-//        private void DoorbellRingCallback(IAsyncResult ar)
-//        {
-//            logger.Info("Doorbell callback {0}", ar.ToString());
-//            bool popupRequired = false;
-//            try
-//            {
-//                // Get broadcast
+        private void CameraMovementCallback(IAsyncResult ar)
+        {
+            logger.Info("Camera movement {0}", ar.ToString());
 
-//                IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, _udpDoorbellPort);
-//                byte[] received = _udpClientForDoorbellListener.EndReceive(ar, ref remoteIpEndPoint);
-//                string recvStr = Encoding.UTF8.GetString(received, 0, received.Length);
-//                FrontDoorControl.DoorStatus doorStatus = new FrontDoorControl.DoorStatus(recvStr);
-//                popupRequired = doorStatus.bellPressed;
-//                this.Dispatcher.BeginInvoke(
-//                    (Action)delegate()
-//                        {
-//                            ShowDoorStatus(doorStatus);
-//                        }
-//                    );
-//            }
-//            catch (Exception excp)
-//            {
-//                logger.Error("Exception in MainWindow::DoorbellRingCallback1 {0}", excp.Message);
-//            }
+            try
+            {
+                // Restart receive
+                _udpClientForCameraMovement.BeginReceive(new AsyncCallback(CameraMovementCallback), null);
 
-//            try
-//            {
-//                // Restart receive
-//                _udpClientForDoorbellListener.BeginReceive(new AsyncCallback(DoorbellRingCallback), null);
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
+                        (System.Windows.Forms.MethodInvoker)delegate ()
+                        {
+                            ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
+                        });
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Exception in MainWindow::CameraMovementCallback2 {0}", excp.Message);
+            }
+        }
 
-//                // Popup window and start listing to audio from camera
-//                if (popupRequired)
-//                {
-//                    System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
-//                            (System.Windows.Forms.MethodInvoker)delegate()
-//                                {
-//                                    ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
-//#if (LISTEN_TO_CAMERA)
-//                                    listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
-//#endif
-//                                });
-//                }
-//            }
-//            catch (Exception excp)
-//            {
-//                logger.Error("Exception in MainWindow::DoorbellRingCallback2 {0}", excp.Message);
-//            }
-//        }
+        //        private void DoorbellRingCallback(IAsyncResult ar)
+        //        {
+        //            logger.Info("Doorbell callback {0}", ar.ToString());
+        //            bool popupRequired = false;
+        //            try
+        //            {
+        //                // Get broadcast
+
+        //                IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, _udpDoorbellPort);
+        //                byte[] received = _udpClientForDoorbellListener.EndReceive(ar, ref remoteIpEndPoint);
+        //                string recvStr = Encoding.UTF8.GetString(received, 0, received.Length);
+        //                FrontDoorControl.DoorStatus doorStatus = new FrontDoorControl.DoorStatus(recvStr);
+        //                popupRequired = doorStatus.bellPressed;
+        //                this.Dispatcher.BeginInvoke(
+        //                    (Action)delegate()
+        //                        {
+        //                            ShowDoorStatus(doorStatus);
+        //                        }
+        //                    );
+        //            }
+        //            catch (Exception excp)
+        //            {
+        //                logger.Error("Exception in MainWindow::DoorbellRingCallback1 {0}", excp.Message);
+        //            }
+
+        //            try
+        //            {
+        //                // Restart receive
+        //                _udpClientForDoorbellListener.BeginReceive(new AsyncCallback(DoorbellRingCallback), null);
+
+        //                // Popup window and start listing to audio from camera
+        //                if (popupRequired)
+        //                {
+        //                    System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
+        //                            (System.Windows.Forms.MethodInvoker)delegate()
+        //                                {
+        //                                    ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
+        //#if (LISTEN_TO_CAMERA)
+        //                                    listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
+        //#endif
+        //                                });
+        //                }
+        //            }
+        //            catch (Exception excp)
+        //            {
+        //                logger.Error("Exception in MainWindow::DoorbellRingCallback2 {0}", excp.Message);
+        //            }
+        //        }
 
         private void Unlock_Main_Click(object sender, RoutedEventArgs e)
         {
@@ -555,39 +601,43 @@ namespace RdWebCamSysTrayApp
             ControlToReceiveFocus.Focus();
         }
 
-        private void ShowDoorStatus(FrontDoorControl.DoorStatus doorStatus)
+        private void ShowDoorStatus()
         {
-            if (doorStatus.mainLocked)
+            FrontDoorControl.DoorStatus doorStatus;
+            _frontDoorControl.GetDoorStatus(out doorStatus);
+            if (doorStatus._mainLocked)
                 mainDoorLockState.Source = doorLockedImages.Img1();
             else
                 mainDoorLockState.Source = doorLockedImages.Img2();
-            if (doorStatus.innerLocked)
+            if (doorStatus._innerLocked)
                 innerDoorLockState.Source = doorLockedImages.Img1();
             else
                 innerDoorLockState.Source = doorLockedImages.Img2();
-            if (!doorStatus.mainOpen)
+            if (!doorStatus._mainOpen)
                 mainDoorOpenState.Source = doorClosedImages.Img1();
             else
                 mainDoorOpenState.Source = doorClosedImages.Img2();
-            if (doorStatus.bellPressed)
+            if (doorStatus._bellPressed)
                 doorBellState.Source = doorBellImages.Img1();
             else
                 doorBellState.Source = null;
-            logger.Info("Bell Pressed {0}\r\n", doorStatus.bellPressed);
         }
 
         private void dtimer_Tick(object sender, EventArgs e)
         {
-            // Show door status
-            _doorStatusRefreshCount--;
-            if (_doorStatusRefreshCount <= 0)
-            {
-                FrontDoorControl.DoorStatus doorStatus;
-                bool valid = _frontDoorControl.GetDoorStatus(out doorStatus);
-                if (valid)
-                    ShowDoorStatus(doorStatus);
-                _doorStatusRefreshCount = DOOR_STATUS_REFRESH_SECS;
-            }
+            //// Show door status
+            //_doorStatusRefreshCount--;
+            //if (_doorStatusRefreshCount <= 0)
+            //{
+            //    FrontDoorControl.DoorStatus doorStatus;
+            //    bool valid = _frontDoorControl.GetDoorStatus(out doorStatus);
+            //    if (valid)
+            //    {
+            //        logger.Info("In dTimer_Tick - Bell Pressed {0}", doorStatus.bellPressed);
+            //        ShowDoorStatus(doorStatus);
+            //    }
+            //    _doorStatusRefreshCount = DOOR_STATUS_REFRESH_SECS;
+            //}
 
             // Check for auto-hide required
             if (_autoHideRequiredSecs > 0)
@@ -601,16 +651,28 @@ namespace RdWebCamSysTrayApp
 
         }
 
-        private void SquirtButton_Click(object sender, RoutedEventArgs e)
+        private void SendUDPSquirtMessage(string msg)
         {
             try
             {
-                Uri uri = new Uri("http://" + catDeterrentIPAddress + "/control.cgi?squirt=1");
+                //IPAddress multicastaddress = IPAddress.Parse(catDeterrentIPAddress);
+                //UdpClient udpclient = new UdpClient(41252, AddressFamily.InterNetwork); ;
+                //udpclient.JoinMulticastGroup(multicastaddress);
+                //IPEndPoint remoteep = new IPEndPoint(multicastaddress, _catDeterrentUDPPort);
+                //byte[] send_buffer = Encoding.ASCII.GetBytes(msg);
+                //udpclient.Send(send_buffer, send_buffer.Length, remoteep);
 
-                // Using WebClient as can't get HttpClient to not block
-                WebClient requester = new WebClient();
-                requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_req_completed);
-                requester.OpenReadAsync(uri);
+                Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                IPAddress serverAddr = IPAddress.Parse(catDeterrentIPAddress);
+                IPEndPoint endPoint = new IPEndPoint(serverAddr, _catDeterrentUDPPort);
+                byte[] send_buffer = Encoding.ASCII.GetBytes(msg);
+                sock.SendTo(send_buffer, endPoint);
+
+                //Uri uri = new Uri("http://" + catDeterrentIPAddress + "/control.cgi?squirt=1");
+                //// Using WebClient as can't get HttpClient to not block
+                //WebClient requester = new WebClient();
+                //requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_req_completed);
+                //requester.OpenReadAsync(uri);
 
                 logger.Info("MainWindow::SquirtButton activated");
             }
@@ -743,6 +805,16 @@ namespace RdWebCamSysTrayApp
         private void TextMatrixClearButton_Click(object sender, RoutedEventArgs e)
         {
             _ledMatrix.Clear();
+        }
+
+        private void SquirtButton_MouseDown(object sender, MouseButtonEventArgs e)
+        {
+            SendUDPSquirtMessage("1");
+        }
+
+        private void SquirtButton_MouseUp(object sender, MouseButtonEventArgs e)
+        {
+            SendUDPSquirtMessage("0");
         }
     }
 }

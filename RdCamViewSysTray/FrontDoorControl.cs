@@ -1,4 +1,6 @@
-﻿using System;
+﻿// #define INCREASE_POLL_RATE_WHEN_VIS
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -11,13 +13,14 @@ using NLog;
 using Newtonsoft.Json;
 using System.Net.Sockets;
 
+
 namespace RdWebCamSysTrayApp
 {
     class FrontDoorControl
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public class DoorStatus
+        public class JsonDoorStatus
         {
             public class DoorInfo
             {
@@ -34,48 +37,69 @@ namespace RdWebCamSysTrayApp
             public string learnMs;
             public string learnUserName;
             public string learnLastUserIdx;
+        }
 
-            public string tagId = "";
-            public string tagPresentInfo = "";
-            public bool mainLocked = false;
-            public bool mainOpen = false;
-            public bool innerLocked = false;
-            public bool bellPressed = false;
+        public class DoorStatus
+        {
+            public JsonDoorStatus _doorInfoFromJson;
+
+            public bool _mainLocked = false;
+            public bool _mainOpen = false;
+            public bool _innerLocked = false;
+            public bool _bellPressed = false;
+            public DateTime _lastDoorStatusTime = DateTime.MinValue;
+            public string _tagId = "";
+            public string _tagPresentInfo = "";
 
             public DoorStatus()
             {
             }
 
-            public DoorStatus(string s)
+            //public DoorStatus(string s)
+            //{
+            //    Set(s);
+            //}
+
+            //public void Set(string s)
+            //{
+            //    try
+            //    {
+            //        string[] sVals = s.Split(',');
+            //        tagId = sVals[0];
+            //        tagPresentInfo = sVals[1];
+            //        mainLocked = (sVals[2] == "Y");
+            //        mainOpen = (sVals[3] == "Y");
+            //        innerLocked = (sVals[4] == "Y");
+            //        bellPressed = (sVals[5] == "Y");
+            //    }
+            //    catch (Exception excp)
+            //    {
+            //        logger.Error("Exception in FrontDoorControl::DoorStatus:Set {0}", excp.Message);
+            //    }
+            //}
+
+            private void UpdateInternal()
             {
-                Set(s);
+                _lastDoorStatusTime = DateTime.Now;
+                _mainLocked = (_doorInfoFromJson.doors[0].locked == "Y") ? true : false;
+                _mainOpen = (_doorInfoFromJson.doors[0].open == "Y") ? true : false;
+                _innerLocked = (_doorInfoFromJson.doors[1].locked == "Y") ? true : false;
+                _bellPressed = (_doorInfoFromJson.bell == "Y") ? true : false;
+                _tagId = _doorInfoFromJson.card;
             }
 
-            public void Set(string s)
+            public void UpdateFromJson(string jsonStr)
             {
+                //                body = "{ 'result': { 'door0IsLocked': 'true' } }";
                 try
                 {
-                    string[] sVals = s.Split(',');
-                    tagId = sVals[0];
-                    tagPresentInfo = sVals[1];
-                    mainLocked = (sVals[2] == "Locked");
-                    mainOpen = (sVals[3] != "Closed");
-                    innerLocked = (sVals[4] == "Locked");
-                    bellPressed = (sVals[5] != "No");
+                    _doorInfoFromJson = JsonConvert.DeserializeObject<JsonDoorStatus>(jsonStr);
+                    UpdateInternal();
                 }
                 catch (Exception excp)
                 {
-                    logger.Error("Exception in FrontDoorControl::DoorStatus:Set {0}", excp.Message);
+                    logger.Error("Exception in DoorStatus::UpdateFromJson {0}", excp.Message);
                 }
-            }
-
-            public void Update()
-            {
-                mainLocked = (doors[0].locked == "Y") ? true : false;
-                mainOpen = (doors[0].open == "Open") ? true : false;
-                innerLocked = (doors[1].locked == "Y") ? true : false;
-                bellPressed = (bell == "Y") ? true : false;
-                tagId = card;
             }
         }
 
@@ -87,14 +111,17 @@ namespace RdWebCamSysTrayApp
         private string _doorIPAddress;
         private Timer _doorStatusTimer;
         private DoorStatus _doorStatus = new DoorStatus();
-        private DateTime _lastDoorStatusTime = DateTime.MinValue;
         private int _doorStatusRequestNotifyCount = 0;
         private const int _doorStatusRequestResetAfter = 100;
         private bool _updateStatusRateHigh = false;
 
-        public FrontDoorControl(string doorIPAddress)
+        public delegate void DoorStatusRefreshCallback();
+        private DoorStatusRefreshCallback _doorStatusRefreshCallback;
+
+        public FrontDoorControl(string doorIPAddress, DoorStatusRefreshCallback doorStatusRefreshCallback)
         {
             _doorIPAddress = doorIPAddress;
+            _doorStatusRefreshCallback = doorStatusRefreshCallback;
 
             // Timer to update status
             _doorStatusTimer = new Timer(1000);
@@ -103,7 +130,9 @@ namespace RdWebCamSysTrayApp
 
         public void SetUpdateHighRate(bool highRate)
         {
+#if INCREASE_POLL_RATE_WHEN_VIS
             _updateStatusRateHigh = highRate;
+#endif
         }
 
         private void CallDoorApiFunction(String functionAndArgs)
@@ -228,16 +257,7 @@ namespace RdWebCamSysTrayApp
         {
             try
             {
-                if (_doorStatusRequestNotifyCount == 0)
-                {
-                    CallDoorApiFunction("no/" + GetLocalIPAddress() + ":34344");
-                    logger.Info("Requesting notification from door control");
-                    //string requestURI = "http://" + _doorIPAddress + "/no/" + GetLocalIPAddress() + "/34344";
-                    //HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(requestURI);
-                    //webReq.Method = "GET";
-                    //webReq.BeginGetResponse(new AsyncCallback(DoorNotifyCallback), webReq);
-                }
-                else if (_updateStatusRateHigh ? (_doorStatusRequestNotifyCount % 5 == 2) : (_doorStatusRequestNotifyCount == 2))
+                if (_updateStatusRateHigh ? (_doorStatusRequestNotifyCount % 5 == 2) : (_doorStatusRequestNotifyCount == 0))
                 {
 #if USE_PARTICLE_API
                     Uri uri = new Uri("https://api.particle.io/v1/devices/" + Properties.Settings.Default.FrontDoorParticleDeviceID + "/status?access_token=" + Properties.Settings.Default.FrontDoorParticleAccessToken);
@@ -257,6 +277,15 @@ namespace RdWebCamSysTrayApp
                     logger.Info("FrontDoorControl::OnDoorStatusTimer " + uriStr);
 #endif
                 }
+                else if (_doorStatusRequestNotifyCount == 2)
+                {
+                    CallDoorApiFunction("no/" + GetLocalIPAddress() + ":34344");
+                    logger.Info("Requesting notification from door control");
+                    //string requestURI = "http://" + _doorIPAddress + "/no/" + GetLocalIPAddress() + "/34344";
+                    //HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(requestURI);
+                    //webReq.Method = "GET";
+                    //webReq.BeginGetResponse(new AsyncCallback(DoorNotifyCallback), webReq);
+                }
             }
             catch (Exception excp)
             {
@@ -270,7 +299,7 @@ namespace RdWebCamSysTrayApp
         public bool GetDoorStatus(out DoorStatus doorStatus)
         {
             doorStatus = _doorStatus;
-            return (DateTime.Now - _lastDoorStatusTime).TotalSeconds < 30;
+            return (DateTime.Now - _doorStatus._lastDoorStatusTime).TotalSeconds < 30;
         }
 
 
@@ -293,6 +322,11 @@ namespace RdWebCamSysTrayApp
         //    }
 
         //}
+
+        public  void SetDoorStatusFromJson(string jsonStr)
+        {
+            _doorStatus.UpdateFromJson(jsonStr);
+        }
 
 #if USE_PARTICLE_API
     private void DoorStatusCallback(IAsyncResult res)
@@ -334,12 +368,8 @@ namespace RdWebCamSysTrayApp
                     Stream response = (Stream)e.Result;
                     string body = new StreamReader(response).ReadToEnd();
                     Console.WriteLine("DoorStatusResp " + body);
-
-                    //                body = "{ 'result': { 'door0IsLocked': 'true' } }";
-                    _doorStatus = JsonConvert.DeserializeObject<DoorStatus>(body);
-                    _doorStatus.Update();
-
-                    _lastDoorStatusTime = DateTime.Now;
+                    SetDoorStatusFromJson(body);
+                    _doorStatusRefreshCallback();
                 }
                 catch (Exception excp)
                 {
