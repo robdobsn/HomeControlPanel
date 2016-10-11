@@ -1,6 +1,4 @@
-﻿// #define INCREASE_POLL_RATE_WHEN_VIS
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -12,7 +10,7 @@ using System.Timers;
 using NLog;
 using Newtonsoft.Json;
 using System.Net.Sockets;
-
+using System.Text.RegularExpressions;
 
 namespace RdWebCamSysTrayApp
 {
@@ -20,25 +18,21 @@ namespace RdWebCamSysTrayApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
+        private const int _doorControlNotifyPort = 34344;
+
+        // This is the format received from the door controller
         public class JsonDoorStatus
         {
-            public class DoorInfo
-            {
-                public string name;
-                public string num;
-                public string locked;
-                public string open;
-                public string ms;
-            }
-            public DoorInfo[] doors;
-            public string bell;
-            public string card;
-            public string learn;
-            public string learnMs;
-            public string learnUserName;
-            public string learnLastUserIdx;
+            public string d0l;
+            public string d0o;
+            public string d0ms;
+            public string d1l;
+            public string d1o;
+            public string d1ms;
+            public string b;
         }
 
+        // Status of the door controller
         public class DoorStatus
         {
             public JsonDoorStatus _doorInfoFromJson;
@@ -55,42 +49,17 @@ namespace RdWebCamSysTrayApp
             {
             }
 
-            //public DoorStatus(string s)
-            //{
-            //    Set(s);
-            //}
-
-            //public void Set(string s)
-            //{
-            //    try
-            //    {
-            //        string[] sVals = s.Split(',');
-            //        tagId = sVals[0];
-            //        tagPresentInfo = sVals[1];
-            //        mainLocked = (sVals[2] == "Y");
-            //        mainOpen = (sVals[3] == "Y");
-            //        innerLocked = (sVals[4] == "Y");
-            //        bellPressed = (sVals[5] == "Y");
-            //    }
-            //    catch (Exception excp)
-            //    {
-            //        logger.Error("Exception in FrontDoorControl::DoorStatus:Set {0}", excp.Message);
-            //    }
-            //}
-
             private void UpdateInternal()
             {
                 _lastDoorStatusTime = DateTime.Now;
-                _mainLocked = (_doorInfoFromJson.doors[0].locked == "Y") ? true : false;
-                _mainOpen = (_doorInfoFromJson.doors[0].open == "Y") ? true : false;
-                _innerLocked = (_doorInfoFromJson.doors[1].locked == "Y") ? true : false;
-                _bellPressed = (_doorInfoFromJson.bell == "Y") ? true : false;
-                _tagId = _doorInfoFromJson.card;
+                _mainLocked = (_doorInfoFromJson.d0l == "Y") ? true : false;
+                _mainOpen = (_doorInfoFromJson.d0o == "Y") ? true : false;
+                _innerLocked = (_doorInfoFromJson.d1l == "Y") ? true : false;
+                _bellPressed = (_doorInfoFromJson.b == "Y") ? true : false;
             }
 
             public void UpdateFromJson(string jsonStr)
             {
-                //                body = "{ 'result': { 'door0IsLocked': 'true' } }";
                 try
                 {
                     _doorInfoFromJson = JsonConvert.DeserializeObject<JsonDoorStatus>(jsonStr);
@@ -103,21 +72,23 @@ namespace RdWebCamSysTrayApp
             }
         }
 
-        public class DoorStatusResult
-        {
-            public String result;
-        }
-
+        // IP Address of door controller and door status
         private string _doorIPAddress;
-        private Timer _doorStatusTimer;
         private DoorStatus _doorStatus = new DoorStatus();
+
+        // Timer for re-requesting notifications - in case door controller restarts
+        private Timer _doorStatusTimer;
         private int _doorStatusRequestNotifyCount = 0;
         private const int _doorStatusRequestResetAfter = 100;
-        private bool _updateStatusRateHigh = false;
 
+        // TCP Listener for door status and thread signal.
+        private TcpListener _tcpListenerForDoorStatus;
+
+        // Callback into Main Window when door status has changed - used to pop-up window
         public delegate void DoorStatusRefreshCallback();
         private DoorStatusRefreshCallback _doorStatusRefreshCallback;
 
+        // Front Doot Control Constructor
         public FrontDoorControl(string doorIPAddress, DoorStatusRefreshCallback doorStatusRefreshCallback)
         {
             _doorIPAddress = doorIPAddress;
@@ -126,15 +97,12 @@ namespace RdWebCamSysTrayApp
             // Timer to update status
             _doorStatusTimer = new Timer(1000);
             _doorStatusTimer.Elapsed += new ElapsedEventHandler(OnDoorStatusTimer);
+
+            // TCP listener for door status
+            DoorStatusListenerStart();
         }
 
-        public void SetUpdateHighRate(bool highRate)
-        {
-#if INCREASE_POLL_RATE_WHEN_VIS
-            _updateStatusRateHigh = highRate;
-#endif
-        }
-
+        // Method to make call on door controller - currently using web server on door controller
         private void CallDoorApiFunction(String functionAndArgs)
         {
 #if USE_PARTICLE_API
@@ -183,6 +151,11 @@ namespace RdWebCamSysTrayApp
         public void LockInnerDoor()
         {
             ControlDoor("inner-lock");
+        }
+
+        public bool IsDoorbellPressed()
+        {
+            return _doorStatus._bellPressed;
         }
 
         private void ControlDoor(string doorCommand)
@@ -257,40 +230,39 @@ namespace RdWebCamSysTrayApp
         {
             try
             {
-                if (_updateStatusRateHigh ? (_doorStatusRequestNotifyCount % 5 == 2) : (_doorStatusRequestNotifyCount == 0))
+                if (_doorStatusRequestNotifyCount == 0)
                 {
-#if USE_PARTICLE_API
-                    Uri uri = new Uri("https://api.particle.io/v1/devices/" + Properties.Settings.Default.FrontDoorParticleDeviceID + "/status?access_token=" + Properties.Settings.Default.FrontDoorParticleAccessToken);
-
-                    HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(uri);
-                    webReq.Method = "GET";
-                    webReq.BeginGetResponse(new AsyncCallback(DoorStatusCallback), webReq);
-#else
-                    string uriStr = "http://" + _doorIPAddress + "/q";
-                    Uri uri = new Uri(uriStr);
-
-                    // Using WebClient as can't get HttpClient to not block
-                    WebClient requester = new WebClient();
-                    requester.OpenReadCompleted += new OpenReadCompletedEventHandler(DoorStatusCallback);
-                    requester.OpenReadAsync(uri);
-
-                    logger.Info("FrontDoorControl::OnDoorStatusTimer " + uriStr);
-#endif
-                }
-                else if (_doorStatusRequestNotifyCount == 2)
-                {
-                    CallDoorApiFunction("no/" + GetLocalIPAddress() + ":34344");
+                    CallDoorApiFunction("no/" + GetLocalIPAddress() + ":" + _doorControlNotifyPort.ToString() + "/1/-60/doorstatus");
                     logger.Info("Requesting notification from door control");
-                    //string requestURI = "http://" + _doorIPAddress + "/no/" + GetLocalIPAddress() + "/34344";
-                    //HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(requestURI);
-                    //webReq.Method = "GET";
-                    //webReq.BeginGetResponse(new AsyncCallback(DoorNotifyCallback), webReq);
                 }
+                #if REQUEST_STATUS_ON_TIMER
+                    else if (_doorStatusRequestNotifyCount == 2)
+                    {
+                    #if USE_PARTICLE_API
+                        Uri uri = new Uri("https://api.particle.io/v1/devices/" + Properties.Settings.Default.FrontDoorParticleDeviceID + "/status?access_token=" + Properties.Settings.Default.FrontDoorParticleAccessToken);
+
+                        HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(uri);
+                        webReq.Method = "GET";
+                        webReq.BeginGetResponse(new AsyncCallback(DoorStatusCallback), webReq);
+                    #else
+                        string uriStr = "http://" + _doorIPAddress + "/q";
+                        Uri uri = new Uri(uriStr);
+
+                        // Using WebClient as can't get HttpClient to not block
+                        WebClient requester = new WebClient();
+                        requester.OpenReadCompleted += new OpenReadCompletedEventHandler(DoorStatusCallback);
+                        requester.OpenReadAsync(uri);
+
+                        logger.Info("FrontDoorControl::OnDoorStatusTimer " + uriStr);
+                    #endif
+                    }
+                #endif
             }
             catch (Exception excp)
             {
-                logger.Error("Exception in FrontDoorControl::GetDoorStatus {0}", excp.Message);
+                logger.Error("Exception in FrontDoorControl::OnDoorStatusTimer {0}", excp.Message);
             }
+            // Update counter
             _doorStatusRequestNotifyCount++;
             if (_doorStatusRequestNotifyCount > _doorStatusRequestResetAfter)
                 _doorStatusRequestNotifyCount = 0;
@@ -302,86 +274,62 @@ namespace RdWebCamSysTrayApp
             return (DateTime.Now - _doorStatus._lastDoorStatusTime).TotalSeconds < 30;
         }
 
-
-        //private void DoorNotifyCallback(IAsyncResult res)
-        //{
-        //    try
-        //    {
-        //        HttpWebRequest request = (HttpWebRequest)res.AsyncState;
-        //        if (request == null)
-        //            return;
-        //        HttpWebResponse response = (HttpWebResponse)request.EndGetResponse(res);
-        //        if (response == null)
-        //            return;
-        //        string body = new StreamReader(response.GetResponseStream()).ReadToEnd();
-        //        logger.Info("NotifyRequest returned {0}", body);
-        //    }
-        //    catch (Exception excp)
-        //    {
-        //        logger.Error("Exception in FrontDoorControl::DoorNotifyCallback {0}", excp.Message);
-        //    }
-
-        //}
-
-        public  void SetDoorStatusFromJson(string jsonStr)
+        // Door status listener - only one client connection asynchronously
+        public void DoorStatusListenerStart()
         {
-            _doorStatus.UpdateFromJson(jsonStr);
+            _tcpListenerForDoorStatus = new TcpListener(IPAddress.Any, _doorControlNotifyPort);
+            _tcpListenerForDoorStatus.Start();
+
+            // Start to listen for connections from a client.
+            logger.Debug("Door status listening ...");
+
+            // Accept the connection. 
+            _tcpListenerForDoorStatus.BeginAcceptTcpClient(
+                new AsyncCallback(DoorStatusCallback),
+                _tcpListenerForDoorStatus);
         }
 
-#if USE_PARTICLE_API
-    private void DoorStatusCallback(IAsyncResult res)
+        private void DoorStatusCallback(IAsyncResult res)
         {
             try
             {
-                HttpWebRequest request = (HttpWebRequest)res.AsyncState;
-                if (request == null)
+                TcpListener listener = (TcpListener)res.AsyncState;
+                if (listener == null)
                     return;
-                HttpWebResponse response = (HttpWebResponse)request.EndGetResponse(res);
-                if (response == null)
-                    return;
-                string body = new StreamReader(response.GetResponseStream()).ReadToEnd();
-                Console.WriteLine("DoorStatusResp " + body);
+                TcpClient tcpClient = listener.EndAcceptTcpClient(res);
+                using (var networkStream = tcpClient.GetStream())
+                {
+                    string req = new StreamReader(networkStream).ReadToEnd();
+                    logger.Debug("DoorStatusResp " + req);
+                    string[] reqLines = Regex.Split(req, "\r\n|\r|\n");
+                    string payload = "";
+                    for (int payloadLineIdx = 0; payloadLineIdx < reqLines.Length; payloadLineIdx++)
+                    {
+                        if (reqLines[payloadLineIdx].Trim().Length == 0)
+                        {
+                            if (payloadLineIdx + 1 < reqLines.Length)
+                                payload = reqLines[payloadLineIdx + 1];
+                        }
 
-                //                body = "{ 'result': { 'door0IsLocked': 'true' } }";
-                string resultStr = JsonConvert.DeserializeObject<DoorStatusResult>(body).result;
-                Console.WriteLine("DoorStatus result " + resultStr);
-                _doorStatus = JsonConvert.DeserializeObject<DoorStatus>(resultStr);
-                _doorStatus.Update();
-
-                _lastDoorStatusTime = DateTime.Now;
-
+                    }
+                    if (payload.Length > 0)
+                    {
+                        logger.Debug(payload);
+                        _doorStatus.UpdateFromJson(payload);
+                        _doorStatusRefreshCallback();
+                    }
+                }
             }
             catch (Exception excp)
             {
                 logger.Error("Exception in FrontDoorControl::DoorStatusCallback {0}", excp.Message);
             }
-        }
-     }
-#else
-        private void DoorStatusCallback(object sender, OpenReadCompletedEventArgs e)
-        {
-            if (e.Error == null)
-            {
-                try
-                {
-                    logger.Info("FrontDoorControl::DoorQueryCallback ok");
-                    Stream response = (Stream)e.Result;
-                    string body = new StreamReader(response).ReadToEnd();
-                    Console.WriteLine("DoorStatusResp " + body);
-                    SetDoorStatusFromJson(body);
-                    _doorStatusRefreshCallback();
-                }
-                catch (Exception excp)
-                {
-                    logger.Error("Exception in FrontDoorControl::DoorStatusCallback {0}", excp.Message);
-                }
-            }
-            else
-            {
-                logger.Info("FrontDoorControl::DoorQueryCallback error {0}", e.Error.ToString());
-            }
+            // Listen again
+            _tcpListenerForDoorStatus.BeginAcceptTcpClient(
+                    new AsyncCallback(DoorStatusCallback),
+                    _tcpListenerForDoorStatus);
+
         }
 
-#endif
     }
 }
