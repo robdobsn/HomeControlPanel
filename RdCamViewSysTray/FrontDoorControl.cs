@@ -18,7 +18,7 @@ namespace RdWebCamSysTrayApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        private const int _doorControlNotifyPort = 34344;
+        private int _doorControlNotifyPort;
 
         // This is the format received from the door controller
         public class JsonDoorStatus
@@ -89,9 +89,11 @@ namespace RdWebCamSysTrayApp
         private DoorStatusRefreshCallback _doorStatusRefreshCallback;
 
         // Front Doot Control Constructor
-        public FrontDoorControl(string doorIPAddress, DoorStatusRefreshCallback doorStatusRefreshCallback)
+        public FrontDoorControl(string doorIPAddress, int doorControlNotifyPort,
+                            DoorStatusRefreshCallback doorStatusRefreshCallback)
         {
             _doorIPAddress = doorIPAddress;
+            _doorControlNotifyPort = doorControlNotifyPort;
             _doorStatusRefreshCallback = doorStatusRefreshCallback;
 
             // Timer to update status
