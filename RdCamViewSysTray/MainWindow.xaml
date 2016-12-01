@@ -83,6 +83,7 @@
                 <Button Content="Down" Height="26" x:Name="LeftMidDownButton" Width="91" Click="LeftMidDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="2" />
                 <Button Content="Down" Height="26" x:Name="RightMidDownButton" Width="91" Click="RightMidDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="3" />
                 <Button Content="Down" Height="26" x:Name="RightDownButton" Width="91" Click="RightDownButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="4" />
+                <TextBox x:Name="DoorStatusTextBox" Grid.ColumnSpan="2" Grid.Column="3" HorizontalAlignment="Left" Height="23" Margin="2,2,0,0" Grid.Row="3" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="176"/>
             </Grid>
             <Grid Height="Auto"  Margin="0,10,0,-42" Grid.Column="1" Grid.Row="2">
                 <Grid.RowDefinitions>

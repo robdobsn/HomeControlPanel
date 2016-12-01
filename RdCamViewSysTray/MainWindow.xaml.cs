@@ -77,7 +77,6 @@ namespace RdWebCamSysTrayApp
         private EasyButtonImage doorBellImages;
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        
         private BlindsControl _officeBlindsControl;
         private DomoticzControl _domoticzControl;
         private LedMatrix _ledMatrix;
@@ -86,6 +85,8 @@ namespace RdWebCamSysTrayApp
         private const int AUTO_HIDE_AFTER_MANUAL_SHOW_SECS = 120;
         private const int DOOR_STATUS_REFRESH_SECS = 2;
         private DispatcherTimer _dTimer = new DispatcherTimer();
+
+        private DateTime? _doorStatusRefreshTime = null;
 
         public class DeviceInfo
         {
@@ -401,6 +402,8 @@ namespace RdWebCamSysTrayApp
 
         private void DoorStatusRefresh()
         {
+            _doorStatusRefreshTime = DateTime.Now;
+
             // Update the door status using a delegate as it is UI update
             this.Dispatcher.BeginInvoke(
                 (Action)delegate ()
@@ -545,6 +548,19 @@ namespace RdWebCamSysTrayApp
                 }
             }
 
+            // Show time since last status update
+            if (_doorStatusRefreshTime == null)
+            {
+                DoorStatusTextBox.Text = "No Updates";
+            }
+            else
+            {
+                TimeSpan? ts = DateTime.Now - _doorStatusRefreshTime;
+                if (ts != null)
+                {
+                    DoorStatusTextBox.Text = "Info is " + Math.Round(ts.Value.TotalSeconds).ToString() + "s old";
+                }
+            }
         }
 
         private void SendUDPSquirtMessage(string msg)
