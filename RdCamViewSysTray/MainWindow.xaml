@@ -2,7 +2,7 @@
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        Title="Home Control" Height="961.5" Width="980" Closed="Window_Closed" Icon="res/door48x48.ico">
+        Title="Home Control" Height="961.5" Width="980" Closed="Window_Closed" Icon="res/door48x48.ico" Loaded="Home_Control_SysTrayApp_Loaded">
     <Window.Resources>
         <ResourceDictionary>
             <ResourceDictionary.MergedDictionaries>

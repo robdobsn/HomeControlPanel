@@ -13,6 +13,7 @@ using System.Reflection;
 using System.Windows.Threading;
 using NLog;
 using Newtonsoft.Json;
+using System.Windows.Media;
 
 namespace RdWebCamSysTrayApp
 {
@@ -100,9 +101,6 @@ namespace RdWebCamSysTrayApp
             // Log startup
             logger.Info("App Starting ...");
 
-            // Position window
-            Left = Screen.PrimaryScreen.WorkingArea.Width - Width;
-            Top = Screen.PrimaryScreen.WorkingArea.Height - Height;
             ResizeMode = System.Windows.ResizeMode.CanResizeWithGrip;
             _controlToReceiveFocus = this.Settings;
 
@@ -590,6 +588,26 @@ namespace RdWebCamSysTrayApp
         {
             _catDeterrent.squirt(false);
             _controlToReceiveFocus.Focus();
+        }
+
+        private void Home_Control_SysTrayApp_Loaded(object sender, RoutedEventArgs e)
+        {
+            // Position window
+            PresentationSource MainWindowPresentationSource = PresentationSource.FromVisual(this);
+            Matrix m = MainWindowPresentationSource.CompositionTarget.TransformToDevice;
+            double DpiWidthFactor = m.M11;
+            double DpiHeightFactor = m.M22;
+            double ScreenHeight = SystemParameters.PrimaryScreenHeight * DpiHeightFactor;
+            double ScreenWidth = SystemParameters.PrimaryScreenWidth * DpiWidthFactor;
+
+            logger.Info("W " + Screen.PrimaryScreen.WorkingArea.Width.ToString() + " . " + Width.ToString() + " . " + ScreenWidth.ToString() + 
+                " H " + Screen.PrimaryScreen.WorkingArea.Height.ToString() + " . " + Height.ToString() + " . " + ScreenHeight.ToString());
+            if ((ScreenWidth - Width > 0) && (ScreenHeight - Height > 0))
+            {
+                Left = ScreenWidth - Width;
+                Top = ScreenHeight - Height;
+            }
+
         }
     }
 }
