@@ -289,17 +289,40 @@ namespace RdWebCamSysTrayApp
 */
         public float GetOutVolume()
         {
-            return _curOutDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
+            try
+            {
+                return _curOutDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Exception in AudioDevices::GetOutVolume {0}", excp.Message);
+            }
+            return 0;
         }
 
         public bool GetOutMute()
         {
-            return _curOutDevice.AudioEndpointVolume.Mute;
+            try
+            {
+                return _curOutDevice.AudioEndpointVolume.Mute;
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Exception in AudioDevices::GetOutMute {0}", excp.Message);
+            }
+            return false;
         }
 
         public void SetOutMute(bool mute)
         {
-            _curOutDevice.AudioEndpointVolume.Mute = mute;
+            try
+            {
+                _curOutDevice.AudioEndpointVolume.Mute = mute;
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Exception in AudioDevices::SetOutMute {0}", excp.Message);
+            }
         }
 
         public float GetInVolume()
