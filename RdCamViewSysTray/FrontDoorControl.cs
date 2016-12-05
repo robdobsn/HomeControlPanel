@@ -159,11 +159,11 @@ namespace RdWebCamSysTrayApp
             try
             {
                 Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                IPAddress serverAddr = IPAddress.Parse("192.168.0.129");
+                IPAddress serverAddr = IPAddress.Parse(_doorIPAddress);
                 IPEndPoint endPoint = new IPEndPoint(serverAddr, _doorControlRestAPIPort);
                 byte[] send_buffer = Encoding.ASCII.GetBytes(functionAndArgs);
                 sock.SendTo(send_buffer, endPoint);
-                logger.Debug("Sent command to door control by UDP " + functionAndArgs);
+                logger.Debug("Sent command to door " + _doorIPAddress + " port " + _doorControlRestAPIPort.ToString() + " by UDP " + functionAndArgs);
             }
             catch (Exception excp)
             {
@@ -383,13 +383,16 @@ namespace RdWebCamSysTrayApp
                 IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, _doorControlNotifyPort);
                 byte[] received = _udpClientForDoorStatus.EndReceive(res, ref remoteIpEndPoint);
                 string recvStr = Encoding.UTF8.GetString(received);
-                logger.Debug("Received UDP from door control port " + recvStr);
-                _doorStatus.UpdateFromJson(recvStr);
-                _doorStatusRefreshCallback();
+                logger.Debug("Received UDP from door control port " + remoteIpEndPoint.ToString());
+                if (remoteIpEndPoint.Address.Equals(IPAddress.Parse(_doorIPAddress)))
+                {
+                    _doorStatus.UpdateFromJson(recvStr);
+                    _doorStatusRefreshCallback();
+                }
             }
             catch (Exception excp)
             {
-                logger.Error("Exception in MainWindow::CameraMovementCallback2 {0}", excp.Message);
+                logger.Error("Exception in FrontDoorControl::DoorStatusCallback {0}", excp.Message);
             }
             // Restart receive
             _udpClientForDoorStatus.BeginReceive(new AsyncCallback(DoorStatusCallback), null);
