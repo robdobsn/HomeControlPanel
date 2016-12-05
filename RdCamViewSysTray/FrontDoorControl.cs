@@ -1,4 +1,7 @@
-﻿using System;
+﻿#define LISTEN_FOR_UDP_DOOR_STATUS
+//#define LISTEN_FOR_TCP_DOOR_STATUS
+
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -23,13 +26,13 @@ namespace RdWebCamSysTrayApp
         // This is the format received from the door controller
         public class JsonDoorStatus
         {
-            public string d0l;
-            public string d0o;
-            public string d0ms;
-            public string d1l;
-            public string d1o;
-            public string d1ms;
-            public string b;
+            public string d0l = "";
+            public string d0o = "";
+            public string d0ms = "";
+            public string d1l = "";
+            public string d1o = "";
+            public string d1ms = "";
+            public string b = "";
         }
 
         // Status of the door controller
@@ -81,8 +84,13 @@ namespace RdWebCamSysTrayApp
         private int _doorStatusRequestNotifyCount = 0;
         private const int _doorStatusRequestResetAfter = 100;
 
+#if LISTEN_FOR_TCP_DOOR_STATUS
         // TCP Listener for door status and thread signal.
         private TcpListener _tcpListenerForDoorStatus;
+#endif
+#if LISTEN_FOR_UDP_DOOR_STATUS
+        private UdpClient _udpClientForDoorStatus;
+#endif
 
         // Callback into Main Window when door status has changed - used to pop-up window
         public delegate void DoorStatusRefreshCallback();
@@ -114,20 +122,44 @@ namespace RdWebCamSysTrayApp
             // Using WebClient as can't get HttpClient to not block
             WebClient requester = new WebClient();
             requester.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
-            requester.UploadStringCompleted += new UploadStringCompletedEventHandler(web_req_completed);
+            requester.UploadStringCompleted += new UploadStringCompletedEventHandler(ParticleApiFnCompleted);
             requester.UploadStringAsync(uri, "POST", "arg=" + functionAndArgs);
             logger.Info("FrontDoorControl::DoorAPICall " + functionAndArgs);
+
+            private void ParticleApiFnCompleted(object sender, UploadStringCompletedEventArgs e)
+            {
+                if (e.Error == null)
+                {
+                    logger.Info("FrontDoorControl::DoorApiCall ok");
+                }
+                else
+                {
+                    logger.Info("FrontDoorControl::DoorApiCall error {0}", e.Error.ToString());
+                }
+            }
 #else
             string uriStr = "http://" + _doorIPAddress + "/" + functionAndArgs;
             Uri uri = new Uri(uriStr);
 
             // Using WebClient as can't get HttpClient to not block
             WebClient requester = new WebClient();
-            requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_read_completed);
+            requester.OpenReadCompleted += new OpenReadCompletedEventHandler(DoorApiFnCompleted);
             requester.OpenReadAsync(uri);
 
             logger.Info("FrontDoorControl::CallDoorApiFunction " + uriStr);
 #endif
+        }
+
+        private void DoorApiFnCompleted(object sender, OpenReadCompletedEventArgs e)
+        {
+            if (e.Error == null)
+            {
+                logger.Info("FrontDoorControl::DoorApiCall ok");
+            }
+            else
+            {
+                logger.Info("FrontDoorControl::DoorApiCall error {0}", e.Error.ToString());
+            }
         }
 
         public void StartUpdates()
@@ -172,30 +204,6 @@ namespace RdWebCamSysTrayApp
             }
         }
 
-        private void web_read_completed(object sender, OpenReadCompletedEventArgs e)
-        {
-            if (e.Error == null)
-            {
-                logger.Info("FrontDoorControl::DoorApiCall ok");
-            }
-            else
-            {
-                logger.Info("FrontDoorControl::DoorApiCall error {0}", e.Error.ToString());
-            }
-        }
-
-        private void web_req_completed(object sender, UploadStringCompletedEventArgs e)
-        {
-            if (e.Error == null)
-            {
-                logger.Info("FrontDoorControl::DoorApiCall ok");
-            }
-            else
-            {
-                logger.Info("FrontDoorControl::DoorApiCall error {0}", e.Error.ToString());
-            }
-        }
-
         public static string GetLocalIPAddress()
         {
             var host = Dns.GetHostEntry(Dns.GetHostName());
@@ -234,19 +242,25 @@ namespace RdWebCamSysTrayApp
             {
                 if (_doorStatusRequestNotifyCount == 0)
                 {
+#if LISTEN_FOR_TCP_DOOR_STATUS
                     CallDoorApiFunction("no/" + GetLocalIPAddress() + ":" + _doorControlNotifyPort.ToString() + "/1/-60/doorstatus");
-                    logger.Info("Requesting notification from door control");
+                    logger.Info("Requesting TCP notification from door control");
+#endif
+#if LISTEN_FOR_UDP_DOOR_STATUS
+                    CallDoorApiFunction("no/" + GetLocalIPAddress() + ":" + _doorControlNotifyPort.ToString() + "/0/-60/doorstatus");
+                    logger.Info("Requesting UDP notification from door control");
+#endif
                 }
-                #if REQUEST_STATUS_ON_TIMER
+#if REQUEST_STATUS_ON_TIMER
                     else if (_doorStatusRequestNotifyCount == 2)
                     {
-                    #if USE_PARTICLE_API
+#if USE_PARTICLE_API
                         Uri uri = new Uri("https://api.particle.io/v1/devices/" + Properties.Settings.Default.FrontDoorParticleDeviceID + "/status?access_token=" + Properties.Settings.Default.FrontDoorParticleAccessToken);
 
                         HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(uri);
                         webReq.Method = "GET";
                         webReq.BeginGetResponse(new AsyncCallback(DoorStatusCallback), webReq);
-                    #else
+#else
                         string uriStr = "http://" + _doorIPAddress + "/q";
                         Uri uri = new Uri(uriStr);
 
@@ -256,9 +270,9 @@ namespace RdWebCamSysTrayApp
                         requester.OpenReadAsync(uri);
 
                         logger.Info("FrontDoorControl::OnDoorStatusTimer " + uriStr);
-                    #endif
+#endif
                     }
-                #endif
+#endif
             }
             catch (Exception excp)
             {
@@ -279,6 +293,7 @@ namespace RdWebCamSysTrayApp
         // Door status listener - only one client connection asynchronously
         public void DoorStatusListenerStart()
         {
+#if LISTEN_FOR_TCP_DOOR_STATUS
             _tcpListenerForDoorStatus = new TcpListener(IPAddress.Any, _doorControlNotifyPort);
             _tcpListenerForDoorStatus.Start();
 
@@ -289,10 +304,18 @@ namespace RdWebCamSysTrayApp
             _tcpListenerForDoorStatus.BeginAcceptTcpClient(
                 new AsyncCallback(DoorStatusCallback),
                 _tcpListenerForDoorStatus);
+#endif
+#if LISTEN_FOR_UDP_DOOR_STATUS
+            _udpClientForDoorStatus = new UdpClient(_doorControlNotifyPort);
+            _udpClientForDoorStatus.BeginReceive(new AsyncCallback(DoorStatusCallback), null);
+            logger.Info("Socket bound to camera movement port {0}", _doorControlNotifyPort);
+#endif
+
         }
 
         private void DoorStatusCallback(IAsyncResult res)
         {
+#if LISTEN_FOR_TCP_DOOR_STATUS
             try
             {
                 TcpListener listener = (TcpListener)res.AsyncState;
@@ -330,8 +353,27 @@ namespace RdWebCamSysTrayApp
             _tcpListenerForDoorStatus.BeginAcceptTcpClient(
                     new AsyncCallback(DoorStatusCallback),
                     _tcpListenerForDoorStatus);
+#endif
+#if LISTEN_FOR_UDP_DOOR_STATUS
+            try
+            {
+                // Process data
+                IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, _doorControlNotifyPort);
+                byte[] received = _udpClientForDoorStatus.EndReceive(res, ref remoteIpEndPoint);
+                string recvStr = Encoding.UTF8.GetString(received);
+                logger.Debug("Received UDP from door control port " + recvStr);
+                _doorStatus.UpdateFromJson(recvStr);
+                _doorStatusRefreshCallback();
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Exception in MainWindow::CameraMovementCallback2 {0}", excp.Message);
+            }
+            // Restart receive
+            _udpClientForDoorStatus.BeginReceive(new AsyncCallback(DoorStatusCallback), null);
 
+#endif
         }
-
     }
 }
+

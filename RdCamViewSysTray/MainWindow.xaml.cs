@@ -29,7 +29,7 @@ namespace RdWebCamSysTrayApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
         // Config data
-        ConfigFileInfo configFileInfo;
+        ConfigFileInfo _configFileInfo;
 
         // Handlers for video streams - they display in an image
         private VideoStreamDisplays _videoStreamDisplays = new VideoStreamDisplays();
@@ -37,39 +37,49 @@ namespace RdWebCamSysTrayApp
         // Settings
         bool listenToCameraOnShow = false;
 #if (TALK_TO_CAMERA)
-        private TalkToAxisCamera talkToAxisCamera;
+        private TalkToAxisCamera _talkToAxisCamera;
 #endif
 #if (LISTEN_TO_CAMERA)
-        private ListenToAxisCamera listenToAxisCamera;
+        private ListenToAxisCamera _listenToAxisCamera;
 #endif
         
-        // Notify icon
-        private System.Windows.Forms.NotifyIcon _notifyIcon;
-
         // Door control
         private FrontDoorControl _frontDoorControl;
+        private DateTime? _doorStatusRefreshTime = null;
 
         // Cat deterrent
         private CatDeterrent _catDeterrent;
 
-        private AudioDevices _localAudioDevices;
-        private int _timeToListenAfterDoorbellRingInSecs = 300;
-        private System.Windows.Controls.Control ControlToReceiveFocus;
-        private EasyButtonImage doorLockedImages;
-        private EasyButtonImage doorClosedImages;
-        private EasyButtonImage doorBellImages;
-
+        // Blinds
         private BlindsControl _officeBlindsControl;
+
+        // Domoticz units
         private DomoticzControl _domoticzControl;
+
+        // LED Matrix message board
         private LedMatrix _ledMatrix;
+
+        // Local audio devices - used for listening and talking to cameras
+        private AudioDevices _localAudioDevices;
+
+        // Control to receive focus next
+        private System.Windows.Controls.Control _controlToReceiveFocus;
+
+        // Audio listen and window auto display
+        private int _timeToListenAfterDoorbellRingInSecs = 300;
         private int _autoHideRequiredSecs = 0;
         private const int AUTO_HIDE_AFTER_AUTO_SHOW_SECS = 30;
         private const int AUTO_HIDE_AFTER_MANUAL_SHOW_SECS = 120;
         private const int DOOR_STATUS_REFRESH_SECS = 2;
         private DispatcherTimer _dTimer = new DispatcherTimer();
 
-        private DateTime? _doorStatusRefreshTime = null;
+        // Images and icons
+        private EasyButtonImage doorLockedImages;
+        private EasyButtonImage doorClosedImages;
+        private EasyButtonImage doorBellImages;
+        private System.Windows.Forms.NotifyIcon _notifyIcon;
 
+        // Info on a device in the config file
         public class DeviceInfo
         {
             public string description;
@@ -81,6 +91,7 @@ namespace RdWebCamSysTrayApp
             public int notifyPort;
         }
 
+        // Data contained in the config file
         public class ConfigFileInfo
         {
             public Dictionary<string, DeviceInfo> devices;
@@ -97,13 +108,13 @@ namespace RdWebCamSysTrayApp
             Left = Screen.PrimaryScreen.WorkingArea.Width - Width;
             Top = Screen.PrimaryScreen.WorkingArea.Height - Height;
             ResizeMode = System.Windows.ResizeMode.CanResizeWithGrip;
-            ControlToReceiveFocus = this.Settings;
+            _controlToReceiveFocus = this.Settings;
 
             // Get configuration
             using (StreamReader sr = new StreamReader("//macallan/Admin/Config/8DPDevices.json"))
             {
                 string jsonData = sr.ReadToEnd();
-                configFileInfo = JsonConvert.DeserializeObject<ConfigFileInfo>(jsonData);
+                _configFileInfo = JsonConvert.DeserializeObject<ConfigFileInfo>(jsonData);
              }
 
             // Notify icon
@@ -132,20 +143,20 @@ namespace RdWebCamSysTrayApp
             });
 
             // Cat deterrent
-            _catDeterrent = new CatDeterrent(configFileInfo.devices["catCamera"].notifyPort, AutoShowWindowFn,
-                configFileInfo.devices["catDeterrent"].IP, configFileInfo.devices["catDeterrent"].port);
+            _catDeterrent = new CatDeterrent(_configFileInfo.devices["catCamera"].notifyPort, AutoShowWindowFn,
+                _configFileInfo.devices["catDeterrent"].IP, _configFileInfo.devices["catDeterrent"].port);
 
             // Front door
-            _frontDoorControl = new FrontDoorControl(configFileInfo.devices["frontDoorLock"].IP,
-                            configFileInfo.devices["frontDoorLock"].notifyPort, DoorStatusRefresh);
+            _frontDoorControl = new FrontDoorControl(_configFileInfo.devices["frontDoorLock"].IP,
+                            _configFileInfo.devices["frontDoorLock"].notifyPort, DoorStatusRefresh);
 
             // Office blinds
-            string officeBlindsIPAddress = configFileInfo.devices["officeBlinds"].IP;
+            string officeBlindsIPAddress = _configFileInfo.devices["officeBlinds"].IP;
             _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
 
             // Domoticz
             List<string> domoticzIPAddresses = new List<string>();
-            foreach (KeyValuePair<string, DeviceInfo> devInfo in configFileInfo.devices)
+            foreach (KeyValuePair<string, DeviceInfo> devInfo in _configFileInfo.devices)
             {
                 if (devInfo.Value.deviceType == "domoticz")
                 {
@@ -155,13 +166,13 @@ namespace RdWebCamSysTrayApp
             _domoticzControl = new DomoticzControl(domoticzIPAddresses);
 
             // LedMatrix
-            string ledMatrixIpAddress = configFileInfo.devices["officeMessageBoard"].IP;
+            string ledMatrixIpAddress = _configFileInfo.devices["officeMessageBoard"].IP;
             _ledMatrix = new LedMatrix(ledMatrixIpAddress);
 
             // Create the video decoder
-            _videoStreamDisplays.add(image1, 0, new Uri("http://" + configFileInfo.devices["frontDoorCamera"].IP + "/axis-cgi/mjpg/video.cgi"));
-            _videoStreamDisplays.add(image2, 0, new Uri("http://" + configFileInfo.devices["garageCamera"].IP + "/img/video.mjpeg"));
-            _videoStreamDisplays.add(image3, 0, new Uri("http://" + configFileInfo.devices["catCamera"].IP + "/img/video.mjpeg"));
+            _videoStreamDisplays.add(image1, 0, new Uri("http://" + _configFileInfo.devices["frontDoorCamera"].IP + "/axis-cgi/mjpg/video.cgi"));
+            _videoStreamDisplays.add(image2, 0, new Uri("http://" + _configFileInfo.devices["garageCamera"].IP + "/img/video.mjpeg"));
+            _videoStreamDisplays.add(image3, 0, new Uri("http://" + _configFileInfo.devices["catCamera"].IP + "/img/video.mjpeg"));
 
             // Volume control
             _localAudioDevices = new AudioDevices();
@@ -172,15 +183,15 @@ namespace RdWebCamSysTrayApp
 
             // Audio in/out
 #if (TALK_TO_CAMERA)
-            if (configFileInfo.devices.ContainsKey("frontDoorCamera"))
-                talkToAxisCamera = new TalkToAxisCamera(configFileInfo.devices["frontDoorCamera"].IP, 80,
-                            configFileInfo.devices["frontDoorCamera"].username,
-                            configFileInfo.devices["frontDoorCamera"].password,
+            if (_configFileInfo.devices.ContainsKey("frontDoorCamera"))
+                _talkToAxisCamera = new TalkToAxisCamera(_configFileInfo.devices["frontDoorCamera"].IP, 80,
+                            _configFileInfo.devices["frontDoorCamera"].username,
+                            _configFileInfo.devices["frontDoorCamera"].password,
                             _localAudioDevices);
 #endif
 #if (LISTEN_TO_CAMERA)
-            if (configFileInfo.devices.ContainsKey("frontDoorCamera"))
-                listenToAxisCamera = new ListenToAxisCamera(configFileInfo.devices["frontDoorCamera"].IP, _localAudioDevices);
+            if (_configFileInfo.devices.ContainsKey("frontDoorCamera"))
+                _listenToAxisCamera = new ListenToAxisCamera(_configFileInfo.devices["frontDoorCamera"].IP, _localAudioDevices);
 #endif
             // Start Video
             StartVideo();
@@ -245,7 +256,7 @@ namespace RdWebCamSysTrayApp
             StartVideo();
 #if (LISTEN_TO_CAMERA)
             if (this.listenToCameraOnShow)
-                listenToAxisCamera.Start();
+                _listenToAxisCamera.Start();
 #endif
             logger.Info("Popup Shown");
         }
@@ -281,30 +292,30 @@ namespace RdWebCamSysTrayApp
         private void StartListen_Click(object sender, RoutedEventArgs e)
         {
 #if (LISTEN_TO_CAMERA)
-            if (!listenToAxisCamera.IsListening())
-                listenToAxisCamera.Start();
+            if (!_listenToAxisCamera.IsListening())
+                _listenToAxisCamera.Start();
 #endif
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
 
         }
 
         private void StopListen_Click(object sender, RoutedEventArgs e)
         {
 #if (LISTEN_TO_CAMERA)
-            if (listenToAxisCamera.IsListening())
-                listenToAxisCamera.Stop();
+            if (_listenToAxisCamera.IsListening())
+                _listenToAxisCamera.Stop();
 #endif
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
 
         }
 
         private void StopTalkAndListen()
         {
 #if (TALK_TO_CAMERA)
-            talkToAxisCamera.StopTalk();
+            _talkToAxisCamera.StopTalk();
 #endif
 #if (LISTEN_TO_CAMERA)
-            listenToAxisCamera.Stop();
+            _listenToAxisCamera.Stop();
 #endif
         }
 
@@ -327,7 +338,7 @@ namespace RdWebCamSysTrayApp
                         {
                             ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
 #if (LISTEN_TO_CAMERA)
-                            listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
+                            _listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
 #endif
                         });
             }
@@ -345,30 +356,30 @@ namespace RdWebCamSysTrayApp
         private void Unlock_Main_Click(object sender, RoutedEventArgs e)
         {
             _frontDoorControl.UnlockMainDoor();
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void Lock_Main_Click(object sender, RoutedEventArgs e)
         {
             _frontDoorControl.LockMainDoor();
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void Unlock_Inner_Click(object sender, RoutedEventArgs e)
         {
             _frontDoorControl.UnlockInnerDoor();
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void Lock_Inner_Click(object sender, RoutedEventArgs e)
         {
             _frontDoorControl.LockInnerDoor();
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void Settings_Click(object sender, RoutedEventArgs e)
         {
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
             SettingsWindow sw = new SettingsWindow(_localAudioDevices);
             sw.Show();
         }
@@ -391,10 +402,10 @@ namespace RdWebCamSysTrayApp
         private void TalkButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
 #if (TALK_TO_CAMERA)
-            if (!talkToAxisCamera.IsTalking())
+            if (!_talkToAxisCamera.IsTalking())
             {
                 // TalkButton.Background = System.Windows.Media.Brushes.Red;
-                talkToAxisCamera.StartTalk();
+                _talkToAxisCamera.StartTalk();
             }
 #endif
         }
@@ -402,12 +413,12 @@ namespace RdWebCamSysTrayApp
         private void TalkButton_PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
 #if (TALK_TO_CAMERA)
-            if (talkToAxisCamera.IsTalking())
+            if (_talkToAxisCamera.IsTalking())
             {
-                talkToAxisCamera.StopTalk();
+                _talkToAxisCamera.StopTalk();
             }
 #endif
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void ShowDoorStatus()
@@ -459,106 +470,94 @@ namespace RdWebCamSysTrayApp
             }
         }
 
-        private void web_req_completed(object sender, OpenReadCompletedEventArgs e)
-        {
-            if (e.Error == null)
-            {
-                logger.Info("MainWindow::SquirtButton ok");
-            }
-            else
-            {
-                logger.Info("MainWindow::SquirtButton error {0}", e.Error.ToString());
-            }
-        }           
-
         private void RobsUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(0, "up");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void LeftUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(1, "up");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void LeftMidUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(2, "up");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void RightMidUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(3, "up");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void RightUpButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(4, "up");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void RobsStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(0, "stop");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void LeftStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(1, "stop");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void LeftMidStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(2, "stop");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void RightMidStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(3, "stop");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void RightStopButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(4, "stop");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void RobsDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(0, "down");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void LeftDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(1, "down");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void LeftMidDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(2, "down");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void RightMidDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(3, "down");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void RightDownButton_Click(object sender, RoutedEventArgs e)
         {
             _officeBlindsControl.ControlBlind(4, "down");
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void OfficeLightsMoodButton_Click(object sender, RoutedEventArgs e)
@@ -586,13 +585,13 @@ namespace RdWebCamSysTrayApp
         private void SquirtButton_MouseDown(object sender, MouseButtonEventArgs e)
         {
             _catDeterrent.squirt(true);
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
 
         private void SquirtButton_MouseUp(object sender, MouseButtonEventArgs e)
         {
             _catDeterrent.squirt(false);
-            ControlToReceiveFocus.Focus();
+            _controlToReceiveFocus.Focus();
         }
     }
 }

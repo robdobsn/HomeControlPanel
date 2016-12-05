@@ -103,7 +103,8 @@ namespace RdWebCamSysTrayApp
                 _audioDevices.StoppingListening();
                 _timeOutForStoppingListening = new System.Timers.Timer(500.0);
                 _timeOutForStoppingListening.Elapsed += new ElapsedEventHandler(OnStoppingListeningTimoutTimer);
-//                _timeOutForStoppingListening.Start();
+                //                _timeOutForStoppingListening.Start();
+                _isListening = false;
             }
         }
 

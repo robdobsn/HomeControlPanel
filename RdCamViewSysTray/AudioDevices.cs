@@ -171,6 +171,7 @@ namespace RdWebCamSysTrayApp
             SetOutVolume(_outVolumeWhenListening);
             _audioFeedbackSuppressionTimer.Start();
             _isListening = true;
+            logger.Info("AudioDevices::StartingListenting");
         }
 
         public void StoppingListening()

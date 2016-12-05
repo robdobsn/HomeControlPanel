@@ -89,8 +89,19 @@ namespace RdWebCamSysTrayApp
                 //WebClient requester = new WebClient();
                 //requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_req_completed);
                 //requester.OpenReadAsync(uri);
+                //private void web_req_completed(object sender, OpenReadCompletedEventArgs e)
+                //{
+                //    if (e.Error == null)
+                //    {
+                //        logger.Info("MainWindow::SquirtButton ok");
+                //    }
+                //    else
+                //    {
+                //        logger.Info("MainWindow::SquirtButton error {0}", e.Error.ToString());
+                //    }
+                //}
 
-                logger.Info("MainWindow::SquirtButton activated");
+                logger.Info("MainWindow::SquirtButton " + (squirtOn ? "activated" : "deactivated"));
             }
             catch (HttpRequestException excp)
             {
