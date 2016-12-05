@@ -3,20 +3,10 @@
 
 using System;
 using System.Collections.Generic;
-using System.Drawing;
-using System.Linq;
 using System.Text;
 using System.Windows;
-using System.Windows.Controls;
-using System.Windows.Data;
-using System.Windows.Documents;
 using System.Windows.Forms;
 using System.Windows.Input;
-using System.Windows.Media;
-using System.Windows.Media.Imaging;
-using System.Windows.Navigation;
-using System.Windows.Shapes;
-using NAudio.Wave;
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
@@ -24,26 +14,27 @@ using MahApps.Metro.Controls;
 using System.ComponentModel;
 using System.Reflection;
 using System.Windows.Threading;
-using MjpegProcessor;
 using System.Net.Http;
 using NLog;
 using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
 
 namespace RdWebCamSysTrayApp
 {
-
-
     /// <summary>
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     public partial class MainWindow : MetroWindow
     {
-        private MjpegDecoder _mjpeg1;
-        private MjpegDecoder _mjpeg2;
-        private MjpegDecoder _mjpeg3;
-        //private MjpegDecoder _mjpeg4;
-        private int rotationAngle = 0;
+        // Logger
+        private static Logger logger = LogManager.GetCurrentClassLogger();
+
+        // Config data
+        ConfigFileInfo configFileInfo;
+
+        // Handlers for video streams - they display in an image
+        private VideoStreamDisplays _videoStreamDisplays = new VideoStreamDisplays();
+
+        // Settings
         bool listenToCameraOnShow = false;
 #if (TALK_TO_CAMERA)
         private TalkToAxisCamera talkToAxisCamera;
@@ -51,31 +42,22 @@ namespace RdWebCamSysTrayApp
 #if (LISTEN_TO_CAMERA)
         private ListenToAxisCamera listenToAxisCamera;
 #endif
-
-        private string frontDoorCameraIPAddress;
-        private string frontDoorCameraUsername;
-        private string frontDoorCameraPassword;
-        private string garageCameraIPAddress;
-        private string catCameraIPAddress;
-        private int _catCameraMovementNotifyPort;
-        private string frontDoorLockIPAddress;
-        private int frontDoorLockNotifyPort;
-        private string catDeterrentIPAddress;
-        private int _catDeterrentUDPPort;
-        private string officeBlindsIPAddress;
-        private string ledMatrixIpAddress;
-        private List<string> domoticzIPAddresses = new List<string>();
+        
+        // Notify icon
         private System.Windows.Forms.NotifyIcon _notifyIcon;
 
-        private UdpClient _udpClientForCameraMovement;
+        // Door control
         private FrontDoorControl _frontDoorControl;
+
+        // Cat deterrent
+        private CatDeterrent _catDeterrent;
+
         private AudioDevices _localAudioDevices;
         private int _timeToListenAfterDoorbellRingInSecs = 300;
         private System.Windows.Controls.Control ControlToReceiveFocus;
         private EasyButtonImage doorLockedImages;
         private EasyButtonImage doorClosedImages;
         private EasyButtonImage doorBellImages;
-        private static Logger logger = LogManager.GetCurrentClassLogger();
 
         private BlindsControl _officeBlindsControl;
         private DomoticzControl _domoticzControl;
@@ -121,28 +103,8 @@ namespace RdWebCamSysTrayApp
             using (StreamReader sr = new StreamReader("//macallan/Admin/Config/8DPDevices.json"))
             {
                 string jsonData = sr.ReadToEnd();
-                ConfigFileInfo configInfo = JsonConvert.DeserializeObject<ConfigFileInfo>(jsonData);
-                frontDoorCameraIPAddress = configInfo.devices["frontDoorCamera"].IP;
-                frontDoorCameraUsername = configInfo.devices["frontDoorCamera"].username;
-                frontDoorCameraPassword = configInfo.devices["frontDoorCamera"].password;
-                garageCameraIPAddress = configInfo.devices["garageCamera"].IP;
-                catCameraIPAddress = configInfo.devices["catCamera"].IP;
-                _catCameraMovementNotifyPort = configInfo.devices["catCamera"].notifyPort;
-                frontDoorLockIPAddress = configInfo.devices["frontDoorLock"].IP;
-                frontDoorLockNotifyPort = configInfo.devices["frontDoorLock"].notifyPort;
-                catDeterrentIPAddress = configInfo.devices["catDeterrent"].IP;
-                _catDeterrentUDPPort = configInfo.devices["catDeterrent"].port;
-                officeBlindsIPAddress = configInfo.devices["officeBlinds"].IP;
-                ledMatrixIpAddress = configInfo.devices["officeMessageBoard"].IP;
-                foreach (KeyValuePair<string, DeviceInfo> devInfo in configInfo.devices)
-                {
-                    if (devInfo.Value.deviceType == "domoticz")
-                    {
-                        domoticzIPAddresses.Add(devInfo.Value.IP);
-                    }
-                }
-
-            }
+                configFileInfo = JsonConvert.DeserializeObject<ConfigFileInfo>(jsonData);
+             }
 
             // Notify icon
             _notifyIcon = new System.Windows.Forms.NotifyIcon();
@@ -169,44 +131,37 @@ namespace RdWebCamSysTrayApp
                 }
             });
 
-            try
-            {
-                _udpClientForCameraMovement = new UdpClient(_catCameraMovementNotifyPort);
-                _udpClientForCameraMovement.BeginReceive(new AsyncCallback(CameraMovementCallback), null);
-                logger.Info("Socket bound to camera movement port {0}", _catCameraMovementNotifyPort);
-            }
-            catch (SocketException excp)
-            {
-                logger.Error("Socket failed to bind to camera movement port {1} ({0})", excp.ToString(), _catCameraMovementNotifyPort);
-            }
-            catch (Exception excp)
-            {
-                logger.Error("Other failed to bind to camera movement port {1} ({0})", excp.ToString(), _catCameraMovementNotifyPort);
-            }
-
+            // Cat deterrent
+            _catDeterrent = new CatDeterrent(configFileInfo.devices["catCamera"].notifyPort, AutoShowWindowFn,
+                configFileInfo.devices["catDeterrent"].IP, configFileInfo.devices["catDeterrent"].port);
 
             // Front door
-            _frontDoorControl = new FrontDoorControl(frontDoorLockIPAddress, 
-                            frontDoorLockNotifyPort, DoorStatusRefresh);
+            _frontDoorControl = new FrontDoorControl(configFileInfo.devices["frontDoorLock"].IP,
+                            configFileInfo.devices["frontDoorLock"].notifyPort, DoorStatusRefresh);
 
             // Office blinds
+            string officeBlindsIPAddress = configFileInfo.devices["officeBlinds"].IP;
             _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
 
             // Domoticz
+            List<string> domoticzIPAddresses = new List<string>();
+            foreach (KeyValuePair<string, DeviceInfo> devInfo in configFileInfo.devices)
+            {
+                if (devInfo.Value.deviceType == "domoticz")
+                {
+                    domoticzIPAddresses.Add(devInfo.Value.IP);
+                }
+            }
             _domoticzControl = new DomoticzControl(domoticzIPAddresses);
 
             // LedMatrix
+            string ledMatrixIpAddress = configFileInfo.devices["officeMessageBoard"].IP;
             _ledMatrix = new LedMatrix(ledMatrixIpAddress);
 
             // Create the video decoder
-            _mjpeg1 = new MjpegDecoder();
-            _mjpeg1.FrameReady += mjpeg1_FrameReady;
-            _mjpeg2 = new MjpegDecoder();
-            _mjpeg2.FrameReady += mjpeg2_FrameReady;
-            _mjpeg3 = new MjpegDecoder();
-            _mjpeg3.FrameReady += mjpeg3_FrameReady;
-            //_mjpeg4 = new MjpegDecoder();
-            //_mjpeg4.FrameReady += mjpeg4_FrameReady;
+            _videoStreamDisplays.add(image1, 0, new Uri("http://" + configFileInfo.devices["frontDoorCamera"].IP + "/axis-cgi/mjpg/video.cgi"));
+            _videoStreamDisplays.add(image2, 0, new Uri("http://" + configFileInfo.devices["garageCamera"].IP + "/img/video.mjpeg"));
+            _videoStreamDisplays.add(image3, 0, new Uri("http://" + configFileInfo.devices["catCamera"].IP + "/img/video.mjpeg"));
 
             // Volume control
             _localAudioDevices = new AudioDevices();
@@ -217,11 +172,15 @@ namespace RdWebCamSysTrayApp
 
             // Audio in/out
 #if (TALK_TO_CAMERA)
-            talkToAxisCamera = new TalkToAxisCamera(frontDoorCameraIPAddress, 80, 
-                            frontDoorCameraUsername, frontDoorCameraPassword, _localAudioDevices);
+            if (configFileInfo.devices.ContainsKey("frontDoorCamera"))
+                talkToAxisCamera = new TalkToAxisCamera(configFileInfo.devices["frontDoorCamera"].IP, 80,
+                            configFileInfo.devices["frontDoorCamera"].username,
+                            configFileInfo.devices["frontDoorCamera"].password,
+                            _localAudioDevices);
 #endif
 #if (LISTEN_TO_CAMERA)
-            listenToAxisCamera = new ListenToAxisCamera(frontDoorCameraIPAddress, _localAudioDevices);
+            if (configFileInfo.devices.ContainsKey("frontDoorCamera"))
+                listenToAxisCamera = new ListenToAxisCamera(configFileInfo.devices["frontDoorCamera"].IP, _localAudioDevices);
 #endif
             // Start Video
             StartVideo();
@@ -311,64 +270,13 @@ namespace RdWebCamSysTrayApp
 
         private void StartVideo()
         {
-            _mjpeg1.ParseStream(new Uri("http://" + frontDoorCameraIPAddress + "/axis-cgi/mjpg/video.cgi"));
-            _mjpeg2.ParseStream(new Uri("http://" + garageCameraIPAddress + "/img/video.mjpeg"));
-            _mjpeg3.ParseStream(new Uri("http://" + catCameraIPAddress + "/img/video.mjpeg"));
-            //_mjpeg4.ParseStream(new Uri("http://" + fourthCameraIPAddress + "/axis-cgi/mjpg/video.cgi"));
+            _videoStreamDisplays.start();
         }
 
         private void StopVideo(bool unsubscribeEvents = false)
         {
-            _mjpeg1.StopStream();
-            _mjpeg2.StopStream();
-            _mjpeg3.StopStream();
-            //_mjpeg4.StopStream();
-            if (unsubscribeEvents)
-            {
-                _mjpeg1.FrameReady -= mjpeg1_FrameReady;
-                _mjpeg2.FrameReady -= mjpeg2_FrameReady;
-                _mjpeg3.FrameReady -= mjpeg3_FrameReady;
-                //_mjpeg4.FrameReady -= mjpeg4_FrameReady;
-            }
+            _videoStreamDisplays.stop(unsubscribeEvents);
         }
-
-        private void mjpeg1_FrameReady(object sender, FrameReadyEventArgs e)
-        {
-            if (rotationAngle != 0)
-            {
-                TransformedBitmap tmpImage = new TransformedBitmap();
-
-                tmpImage.BeginInit();
-                tmpImage.Source = e.BitmapImage; // of type BitmapImage
-
-                RotateTransform transform = new RotateTransform(rotationAngle);
-                tmpImage.Transform = transform;
-                tmpImage.EndInit();
-
-                image1.Source = tmpImage;
-            }
-            else
-            {
-                image1.Source = e.BitmapImage;
-            }
-        }
-
-        private void mjpeg2_FrameReady(object sender, FrameReadyEventArgs e)
-        {
-            image2.Source = e.BitmapImage;
-        }
-
-        private void mjpeg3_FrameReady(object sender, FrameReadyEventArgs e)
-        {
-            image3.Source = e.BitmapImage;
-        }
-
-        //private void mjpeg4_FrameReady(object sender, FrameReadyEventArgs e)
-        //{
-        //    Int32Rect cropRect = new Int32Rect(400, 380, 300, 200);
-        //    BitmapSource croppedImage = new CroppedBitmap(e.BitmapImage, cropRect);
-        //    image4.Source = croppedImage;
-        //}
 
         private void StartListen_Click(object sender, RoutedEventArgs e)
         {
@@ -425,25 +333,13 @@ namespace RdWebCamSysTrayApp
             }
         }
 
-        private void CameraMovementCallback(IAsyncResult ar)
+        private void AutoShowWindowFn()
         {
-            logger.Info("Camera movement {0}", ar.ToString());
-
-            try
-            {
-                // Restart receive
-                _udpClientForCameraMovement.BeginReceive(new AsyncCallback(CameraMovementCallback), null);
-
-                System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
-                        (System.Windows.Forms.MethodInvoker)delegate ()
-                        {
-                            ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
-                        });
-            }
-            catch (Exception excp)
-            {
-                logger.Error("Exception in MainWindow::CameraMovementCallback2 {0}", excp.Message);
-            }
+            System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
+                    (System.Windows.Forms.MethodInvoker)delegate ()
+                    {
+                        ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
+                    });
         }
 
         private void Unlock_Main_Click(object sender, RoutedEventArgs e)
@@ -561,38 +457,6 @@ namespace RdWebCamSysTrayApp
                     DoorStatusTextBox.Text = "Info is " + Math.Round(ts.Value.TotalSeconds).ToString() + "s old";
                 }
             }
-        }
-
-        private void SendUDPSquirtMessage(string msg)
-        {
-            try
-            {
-                //IPAddress multicastaddress = IPAddress.Parse(catDeterrentIPAddress);
-                //UdpClient udpclient = new UdpClient(41252, AddressFamily.InterNetwork); ;
-                //udpclient.JoinMulticastGroup(multicastaddress);
-                //IPEndPoint remoteep = new IPEndPoint(multicastaddress, _catDeterrentUDPPort);
-                //byte[] send_buffer = Encoding.ASCII.GetBytes(msg);
-                //udpclient.Send(send_buffer, send_buffer.Length, remoteep);
-
-                Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                IPAddress serverAddr = IPAddress.Parse(catDeterrentIPAddress);
-                IPEndPoint endPoint = new IPEndPoint(serverAddr, _catDeterrentUDPPort);
-                byte[] send_buffer = Encoding.ASCII.GetBytes(msg);
-                sock.SendTo(send_buffer, endPoint);
-
-                //Uri uri = new Uri("http://" + catDeterrentIPAddress + "/control.cgi?squirt=1");
-                //// Using WebClient as can't get HttpClient to not block
-                //WebClient requester = new WebClient();
-                //requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_req_completed);
-                //requester.OpenReadAsync(uri);
-
-                logger.Info("MainWindow::SquirtButton activated");
-            }
-            catch (HttpRequestException excp)
-            {
-                logger.Error("MainWindow::SquirtButton exception {0}", excp.Message);
-            }
-            ControlToReceiveFocus.Focus();
         }
 
         private void web_req_completed(object sender, OpenReadCompletedEventArgs e)
@@ -721,12 +585,14 @@ namespace RdWebCamSysTrayApp
 
         private void SquirtButton_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            SendUDPSquirtMessage("1");
+            _catDeterrent.squirt(true);
+            ControlToReceiveFocus.Focus();
         }
 
         private void SquirtButton_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            SendUDPSquirtMessage("0");
+            _catDeterrent.squirt(false);
+            ControlToReceiveFocus.Focus();
         }
     }
 }

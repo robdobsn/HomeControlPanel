@@ -133,6 +133,7 @@
     </ApplicationDefinition>
     <Compile Include="BiQuadFilter.cs" />
     <Compile Include="BlindsControl.cs" />
+    <Compile Include="CatDeterrent.cs" />
     <Compile Include="DomoticzControl.cs" />
     <Compile Include="EasyButtonImage.cs" />
     <Compile Include="FrontDoorControl.cs" />
@@ -146,6 +147,7 @@
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>
     <Compile Include="TalkToAxisCamera.cs" />
+    <Compile Include="VideoStreamDisplays.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
