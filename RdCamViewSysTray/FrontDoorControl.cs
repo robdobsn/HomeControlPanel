@@ -1,5 +1,8 @@
 ﻿#define LISTEN_FOR_UDP_DOOR_STATUS
 //#define LISTEN_FOR_TCP_DOOR_STATUS
+//#define USE_PARTICLE_API
+//#define USE_HTTP_REST_API
+#define USE_UDP_REST_API
 
 using System;
 using System.Collections.Generic;
@@ -22,6 +25,7 @@ namespace RdWebCamSysTrayApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
         private int _doorControlNotifyPort;
+        private int _doorControlRestAPIPort;
 
         // This is the format received from the door controller
         public class JsonDoorStatus
@@ -98,10 +102,12 @@ namespace RdWebCamSysTrayApp
 
         // Front Doot Control Constructor
         public FrontDoorControl(string doorIPAddress, int doorControlNotifyPort,
+                            int doorControlRestAPIPort,
                             DoorStatusRefreshCallback doorStatusRefreshCallback)
         {
             _doorIPAddress = doorIPAddress;
             _doorControlNotifyPort = doorControlNotifyPort;
+            _doorControlRestAPIPort = doorControlRestAPIPort;
             _doorStatusRefreshCallback = doorStatusRefreshCallback;
 
             // Timer to update status
@@ -137,7 +143,8 @@ namespace RdWebCamSysTrayApp
                     logger.Info("FrontDoorControl::DoorApiCall error {0}", e.Error.ToString());
                 }
             }
-#else
+#endif
+#if USE_HTTP_REST_API
             string uriStr = "http://" + _doorIPAddress + "/" + functionAndArgs;
             Uri uri = new Uri(uriStr);
 
@@ -147,6 +154,21 @@ namespace RdWebCamSysTrayApp
             requester.OpenReadAsync(uri);
 
             logger.Info("FrontDoorControl::CallDoorApiFunction " + uriStr);
+#endif
+#if USE_UDP_REST_API
+            try
+            {
+                Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                IPAddress serverAddr = IPAddress.Parse("192.168.0.129");
+                IPEndPoint endPoint = new IPEndPoint(serverAddr, _doorControlRestAPIPort);
+                byte[] send_buffer = Encoding.ASCII.GetBytes(functionAndArgs);
+                sock.SendTo(send_buffer, endPoint);
+                logger.Debug("Sent command to door control by UDP " + functionAndArgs);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("FrontDoorControl::CallDoorApiFunction exception {0}", excp.Message);
+            }
 #endif
         }
 

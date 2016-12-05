@@ -3,18 +3,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.Text;
 using System.Windows;
 using System.Windows.Forms;
 using System.Windows.Input;
 using System.IO;
-using System.Net;
-using System.Net.Sockets;
 using MahApps.Metro.Controls;
 using System.ComponentModel;
 using System.Reflection;
 using System.Windows.Threading;
-using System.Net.Http;
 using NLog;
 using Newtonsoft.Json;
 
@@ -148,7 +144,9 @@ namespace RdWebCamSysTrayApp
 
             // Front door
             _frontDoorControl = new FrontDoorControl(_configFileInfo.devices["frontDoorLock"].IP,
-                            _configFileInfo.devices["frontDoorLock"].notifyPort, DoorStatusRefresh);
+                            _configFileInfo.devices["frontDoorLock"].notifyPort,
+                            _configFileInfo.devices["frontDoorLock"].port,
+                            DoorStatusRefresh);
 
             // Office blinds
             string officeBlindsIPAddress = _configFileInfo.devices["officeBlinds"].IP;
