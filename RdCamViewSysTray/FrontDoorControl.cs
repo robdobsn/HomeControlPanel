@@ -383,11 +383,16 @@ namespace RdWebCamSysTrayApp
                 IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, _doorControlNotifyPort);
                 byte[] received = _udpClientForDoorStatus.EndReceive(res, ref remoteIpEndPoint);
                 string recvStr = Encoding.UTF8.GetString(received);
-                logger.Debug("Received UDP from door control port " + remoteIpEndPoint.ToString());
+//                logger.Debug("Received UDP from door control port " + remoteIpEndPoint.ToString());
                 if (remoteIpEndPoint.Address.Equals(IPAddress.Parse(_doorIPAddress)))
                 {
                     _doorStatus.UpdateFromJson(recvStr);
                     _doorStatusRefreshCallback();
+//                    logger.Debug("Updating UI with  " + recvStr);
+                }
+                else
+                {
+//                    logger.Debug("Not from the door we're managing " + recvStr);
                 }
             }
             catch (Exception excp)
