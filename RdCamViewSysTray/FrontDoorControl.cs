@@ -330,7 +330,7 @@ namespace RdWebCamSysTrayApp
 #if LISTEN_FOR_UDP_DOOR_STATUS
             _udpClientForDoorStatus = new UdpClient(_doorControlNotifyPort);
             _udpClientForDoorStatus.BeginReceive(new AsyncCallback(DoorStatusCallback), null);
-            logger.Info("Socket bound to camera movement port {0}", _doorControlNotifyPort);
+            logger.Info("Socket bound to RFID door lock port {0}", _doorControlNotifyPort);
 #endif
 
         }
