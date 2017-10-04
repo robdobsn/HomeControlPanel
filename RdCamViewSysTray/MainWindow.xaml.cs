@@ -14,6 +14,8 @@ using System.Windows.Threading;
 using NLog;
 using Newtonsoft.Json;
 using System.Windows.Media;
+using System.Linq;
+using System.Windows.Media.Imaging;
 
 namespace RdWebCamSysTrayApp
 {
@@ -47,6 +49,9 @@ namespace RdWebCamSysTrayApp
         // Cat deterrent
         private CatDeterrent _catDeterrent;
 
+        // Camera motion detect
+        private CameraMotion _cameraMotion;
+
         // Blinds
         private BlindsControl _officeBlindsControl;
 
@@ -76,6 +81,10 @@ namespace RdWebCamSysTrayApp
         private EasyButtonImage doorBellImages;
         private System.Windows.Forms.NotifyIcon _notifyIcon;
 
+        // Image display
+        private int _curImageAgeToDisplay = 0;
+        private string _lastFrontDoorImageName = "";
+
         // Info on a device in the config file
         public class DeviceInfo
         {
@@ -86,6 +95,9 @@ namespace RdWebCamSysTrayApp
             public string password;
             public int port;
             public int notifyPort;
+            public string videoURL;
+            public string imageGrabPath;
+            public int imageGrabPoll;
         }
 
         // Data contained in the config file
@@ -140,6 +152,9 @@ namespace RdWebCamSysTrayApp
             _catDeterrent = new CatDeterrent(_configFileInfo.devices["catCamera"].notifyPort, AutoShowWindowFn,
                 _configFileInfo.devices["catDeterrent"].IP, _configFileInfo.devices["catDeterrent"].port);
 
+            // Camera motion
+            _cameraMotion = new CameraMotion(_configFileInfo.devices["frontDoorCamera"].notifyPort, AutoShowWindowFn);
+
             // Front door
             _frontDoorControl = new FrontDoorControl(_configFileInfo.devices["frontDoorLock"].IP,
                             _configFileInfo.devices["frontDoorLock"].notifyPort,
@@ -166,9 +181,9 @@ namespace RdWebCamSysTrayApp
             _ledMatrix = new LedMatrix(ledMatrixIpAddress);
 
             // Create the video decoder
-            _videoStreamDisplays.add(image1, 0, new Uri("http://" + _configFileInfo.devices["frontDoorCamera"].IP + "/axis-cgi/mjpg/video.cgi"));
-            _videoStreamDisplays.add(image2, 0, new Uri("http://" + _configFileInfo.devices["garageCamera"].IP + "/img/video.mjpeg"));
-            _videoStreamDisplays.add(image3, 0, new Uri("http://" + _configFileInfo.devices["catCamera"].IP + "/img/video.mjpeg"));
+            _videoStreamDisplays.add(video1, 0, new Uri(_configFileInfo.devices["frontDoorCamera"].videoURL));
+            _videoStreamDisplays.add(video2, 0, new Uri(_configFileInfo.devices["garageCamera"].videoURL));
+            _videoStreamDisplays.add(video3, 0, new Uri(_configFileInfo.devices["catCamera"].videoURL));
 
             // Volume control
             _localAudioDevices = new AudioDevices();
@@ -417,6 +432,27 @@ namespace RdWebCamSysTrayApp
             _controlToReceiveFocus.Focus();
         }
 
+        private BitmapImage GetImageFromFolder(string folder, int imageAgeZeroNewest)
+        {
+            // Find images in folder sorted by age
+            DirectoryInfo info = new DirectoryInfo(folder);
+            FileInfo[] files = info.GetFiles("*.jpg").OrderBy(p => p.CreationTime).ToArray();
+            if (files.Length > 0)
+            {
+                if (imageAgeZeroNewest >= files.Length)
+                    imageAgeZeroNewest = files.Length - 1;
+                int fileIdx = files.Length - 1 - imageAgeZeroNewest;
+                try
+                {
+                    return new BitmapImage(new Uri(Path.Combine(folder, files[fileIdx].Name)));
+                }
+                finally
+                {
+                }
+            }
+            return null;
+        }
+
         private void ShowDoorStatus()
         {
             FrontDoorControl.DoorStatus doorStatus;
@@ -464,6 +500,24 @@ namespace RdWebCamSysTrayApp
                     DoorStatusTextBox.Text = "Info is " + Math.Round(ts.Value.TotalSeconds).ToString() + "s old";
                 }
             }
+
+            // Poll for new motion detected if required
+            if (_configFileInfo.devices["frontDoorCamera"].imageGrabPoll != 0)
+            {
+                string folder = _configFileInfo.devices["frontDoorCamera"].imageGrabPath;
+                DirectoryInfo info = new DirectoryInfo(folder);
+                FileInfo[] files = info.GetFiles("*.jpg").OrderBy(p => p.CreationTime).ToArray();
+                if (files.Length <= 0)
+                    return;
+                string newestFname = files[files.Length - 1].Name;
+                if (_lastFrontDoorImageName != newestFname)
+                {
+                    _lastFrontDoorImageName = newestFname;
+                    AutoShowWindowFn();
+                    showImages();
+                }
+            }
+
         }
 
         private void RobsUpButton_Click(object sender, RoutedEventArgs e)
@@ -605,9 +659,55 @@ namespace RdWebCamSysTrayApp
             if ((ScreenWidth - Width > 0) && (ScreenHeight - Height > 0))
             {
                 Left = ScreenWidth - Width;
-                Top = ScreenHeight - Height;
+                Top = ScreenHeight - Height - 100;
             }
 
+        }
+
+        private void BtnShowVideo_Click(object sender, RoutedEventArgs e)
+        {
+            switchImageDisplay(false);
+        }
+
+        private void switchImageDisplay(bool showImages)
+        {
+            image1.Visibility = showImages ? Visibility.Visible : Visibility.Hidden;
+            image2.Visibility = showImages ? Visibility.Visible : Visibility.Hidden;
+            image3.Visibility = showImages ? Visibility.Visible : Visibility.Hidden;
+            video1.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
+            video2.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
+            video3.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
+        }
+
+        private void BtnShowImage_Click(object sender, RoutedEventArgs e)
+        {
+            switchImageDisplay(true);
+            // Find latest images
+            _curImageAgeToDisplay = 0;
+            showImages();
+        }
+
+        private void showImages()
+        {
+            image1.Source = GetImageFromFolder(_configFileInfo.devices["frontDoorCamera"].imageGrabPath, _curImageAgeToDisplay);
+            image2.Source = GetImageFromFolder(_configFileInfo.devices["garageCamera"].imageGrabPath, _curImageAgeToDisplay);
+            image3.Source = GetImageFromFolder(_configFileInfo.devices["catCamera"].imageGrabPath, _curImageAgeToDisplay);
+        }
+
+        private void BtnImageNext_Click(object sender, RoutedEventArgs e)
+        {
+            switchImageDisplay(true);
+            _curImageAgeToDisplay--;
+            if (_curImageAgeToDisplay < 0)
+                _curImageAgeToDisplay = 0;
+            showImages();
+        }
+
+        private void BtnImagePrev_Click(object sender, RoutedEventArgs e)
+        {
+            switchImageDisplay(true);
+            _curImageAgeToDisplay++;
+            showImages();
         }
     }
 }
