@@ -16,6 +16,7 @@ using Newtonsoft.Json;
 using System.Windows.Media;
 using System.Linq;
 using System.Windows.Media.Imaging;
+using System.Net;
 
 namespace RdWebCamSysTrayApp
 {
@@ -41,7 +42,7 @@ namespace RdWebCamSysTrayApp
 #if (LISTEN_TO_CAMERA)
         private ListenToAxisCamera _listenToAxisCamera;
 #endif
-        
+
         // Door control
         private FrontDoorControl _frontDoorControl;
         private DateTime? _doorStatusRefreshTime = null;
@@ -90,7 +91,7 @@ namespace RdWebCamSysTrayApp
         {
             public string description;
             public string deviceType;
-            public string IP;
+            public string hostname;
             public string username;
             public string password;
             public int port;
@@ -121,7 +122,7 @@ namespace RdWebCamSysTrayApp
             {
                 string jsonData = sr.ReadToEnd();
                 _configFileInfo = JsonConvert.DeserializeObject<ConfigFileInfo>(jsonData);
-             }
+            }
 
             // Notify icon
             _notifyIcon = new System.Windows.Forms.NotifyIcon();
@@ -129,7 +130,7 @@ namespace RdWebCamSysTrayApp
             _notifyIcon.Icon = new System.Drawing.Icon(iconStream);
             _notifyIcon.Visible = true;
             _notifyIcon.MouseUp +=
-            new System.Windows.Forms.MouseEventHandler(delegate(object sender, System.Windows.Forms.MouseEventArgs args)
+            new System.Windows.Forms.MouseEventHandler(delegate (object sender, System.Windows.Forms.MouseEventArgs args)
             {
                 if (args.Button == MouseButtons.Left)
                 {
@@ -150,19 +151,19 @@ namespace RdWebCamSysTrayApp
 
             // Cat deterrent
             _catDeterrent = new CatDeterrent(_configFileInfo.devices["catCamera"].notifyPort, AutoShowWindowFn,
-                _configFileInfo.devices["catDeterrent"].IP, _configFileInfo.devices["catDeterrent"].port);
+                getIPAddressForName(_configFileInfo.devices["catDeterrent"].hostname), _configFileInfo.devices["catDeterrent"].port);
 
             // Camera motion
             _cameraMotion = new CameraMotion(_configFileInfo.devices["frontDoorCamera"].notifyPort, AutoShowWindowFn);
 
             // Front door
-            _frontDoorControl = new FrontDoorControl(_configFileInfo.devices["frontDoorLock"].IP,
+            _frontDoorControl = new FrontDoorControl(getIPAddressForName(_configFileInfo.devices["frontDoorLock"].hostname),
                             _configFileInfo.devices["frontDoorLock"].notifyPort,
                             _configFileInfo.devices["frontDoorLock"].port,
                             DoorStatusRefresh);
 
             // Office blinds
-            string officeBlindsIPAddress = _configFileInfo.devices["officeBlinds"].IP;
+            string officeBlindsIPAddress = getIPAddressForName(_configFileInfo.devices["officeBlinds"].hostname);
             _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
 
             // Domoticz
@@ -171,13 +172,15 @@ namespace RdWebCamSysTrayApp
             {
                 if (devInfo.Value.deviceType == "domoticz")
                 {
-                    domoticzIPAddresses.Add(devInfo.Value.IP);
+                    string ipAddr = getIPAddressForName(devInfo.Value.hostname);
+                    if (ipAddr.Length > 0)
+                        domoticzIPAddresses.Add(ipAddr);
                 }
             }
             _domoticzControl = new DomoticzControl(domoticzIPAddresses);
 
             // LedMatrix
-            string ledMatrixIpAddress = _configFileInfo.devices["officeMessageBoard"].IP;
+            string ledMatrixIpAddress = getIPAddressForName(_configFileInfo.devices["officeMessageBoard"].hostname);
             _ledMatrix = new LedMatrix(ledMatrixIpAddress);
 
             // Create the video decoder
@@ -195,14 +198,14 @@ namespace RdWebCamSysTrayApp
             // Audio in/out
 #if (TALK_TO_CAMERA)
             if (_configFileInfo.devices.ContainsKey("frontDoorCamera"))
-                _talkToAxisCamera = new TalkToAxisCamera(_configFileInfo.devices["frontDoorCamera"].IP, 80,
+                _talkToAxisCamera = new TalkToAxisCamera(getIPAddressForName(_configFileInfo.devices["frontDoorCamera"].hostname), 80,
                             _configFileInfo.devices["frontDoorCamera"].username,
                             _configFileInfo.devices["frontDoorCamera"].password,
                             _localAudioDevices);
 #endif
 #if (LISTEN_TO_CAMERA)
             if (_configFileInfo.devices.ContainsKey("frontDoorCamera"))
-                _listenToAxisCamera = new ListenToAxisCamera(_configFileInfo.devices["frontDoorCamera"].IP, _localAudioDevices);
+                _listenToAxisCamera = new ListenToAxisCamera(getIPAddressForName(_configFileInfo.devices["frontDoorCamera"].hostname), _localAudioDevices);
 #endif
             // Start Video
             StartVideo();
@@ -654,7 +657,7 @@ namespace RdWebCamSysTrayApp
             double ScreenHeight = SystemParameters.PrimaryScreenHeight * DpiHeightFactor;
             double ScreenWidth = SystemParameters.PrimaryScreenWidth * DpiWidthFactor;
 
-            logger.Info("W " + Screen.PrimaryScreen.WorkingArea.Width.ToString() + " . " + Width.ToString() + " . " + ScreenWidth.ToString() + 
+            logger.Info("W " + Screen.PrimaryScreen.WorkingArea.Width.ToString() + " . " + Width.ToString() + " . " + ScreenWidth.ToString() +
                 " H " + Screen.PrimaryScreen.WorkingArea.Height.ToString() + " . " + Height.ToString() + " . " + ScreenHeight.ToString());
             if ((ScreenWidth - Width > 0) && (ScreenHeight - Height > 0))
             {
@@ -708,6 +711,22 @@ namespace RdWebCamSysTrayApp
             switchImageDisplay(true);
             _curImageAgeToDisplay++;
             showImages();
+        }
+
+        private string getIPAddressForName(string hname)
+        {
+            IPAddress[] ips;
+            try
+            {
+                ips = Dns.GetHostAddresses(hname);
+                if (ips.Length > 0)
+                    return ips[0].ToString();
+            }
+            catch
+            {
+                logger.Info("Failed to find ip for name " + hname);
+            }
+            return "";
         }
     }
 }

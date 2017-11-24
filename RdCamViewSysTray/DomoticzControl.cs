@@ -42,6 +42,10 @@ namespace RdWebCamSysTrayApp
                 {
                     logger.Error("DomoticzControl::SendGroupCommand {0} exception {1}", groupCommand, excp.Message);
                 }
+                catch (Exception excp)
+                {
+                    logger.Error("DomoticzControl::SendGroupCommand {0} exception {1}", groupCommand, excp.Message);
+                }
             }
         }
 
