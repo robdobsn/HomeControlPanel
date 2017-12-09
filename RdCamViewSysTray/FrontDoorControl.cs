@@ -83,6 +83,10 @@ namespace RdWebCamSysTrayApp
         private string _doorIPAddress;
         private DoorStatus _doorStatus = new DoorStatus();
 
+        // Number and PIN of door user
+        private int _doorUserNumber;
+        private string _doorUserPin;
+
         // Timer for re-requesting notifications - in case door controller restarts
         private Timer _doorStatusTimer;
         private int _doorStatusRequestNotifyCount = 0;
@@ -101,13 +105,13 @@ namespace RdWebCamSysTrayApp
         private DoorStatusRefreshCallback _doorStatusRefreshCallback;
 
         // Front Doot Control Constructor
-        public FrontDoorControl(string doorIPAddress, int doorControlNotifyPort,
-                            int doorControlRestAPIPort,
-                            DoorStatusRefreshCallback doorStatusRefreshCallback)
+        public FrontDoorControl(DeviceInfo devInfo, DoorStatusRefreshCallback doorStatusRefreshCallback)
         {
-            _doorIPAddress = doorIPAddress;
-            _doorControlNotifyPort = doorControlNotifyPort;
-            _doorControlRestAPIPort = doorControlRestAPIPort;
+            _doorIPAddress = ConfigFileInfo.getIPAddressForName(devInfo.hostname);
+            _doorControlNotifyPort = devInfo.notifyPort;
+            _doorControlRestAPIPort = devInfo.port;
+            _doorUserNumber = devInfo.userNum;
+            _doorUserPin = devInfo.userPin;
             _doorStatusRefreshCallback = doorStatusRefreshCallback;
 
             // Timer to update status
@@ -191,22 +195,22 @@ namespace RdWebCamSysTrayApp
 
         public void UnlockMainDoor()
         {
-            ControlDoor("main-unlock");
+            ControlDoor("U/0/" + _doorUserNumber.ToString() + "/" + _doorUserPin);
         }
 
         public void LockMainDoor()
         {
-            ControlDoor("main-lock");
+            ControlDoor("L/0");
         }
 
         public void UnlockInnerDoor()
         {
-            ControlDoor("inner-unlock");
+            ControlDoor("U/1/" + _doorUserNumber.ToString() + "/" + _doorUserPin);
         }
 
         public void LockInnerDoor()
         {
-            ControlDoor("inner-lock");
+            ControlDoor("L/1");
         }
 
         public bool IsDoorbellPressed()

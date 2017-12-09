@@ -28,7 +28,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <InstallUrl>\\macallan\main\RobDev\Deploy\RdCamViewSysTray\</InstallUrl>
-    <ApplicationRevision>62</ApplicationRevision>
+    <ApplicationRevision>64</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -135,6 +135,7 @@
     <Compile Include="BlindsControl.cs" />
     <Compile Include="CameraMotion.cs" />
     <Compile Include="CatDeterrent.cs" />
+    <Compile Include="ConfigFileInfo.cs" />
     <Compile Include="DomoticzControl.cs" />
     <Compile Include="EasyButtonImage.cs" />
     <Compile Include="FrontDoorControl.cs" />
@@ -149,6 +150,7 @@
     </Compile>
     <Compile Include="TalkToAxisCamera.cs" />
     <Compile Include="VideoStreamDisplays.cs" />
+    <Compile Include="Win32Helper.cs" />
     <Page Include="MainWindow.xaml">
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>

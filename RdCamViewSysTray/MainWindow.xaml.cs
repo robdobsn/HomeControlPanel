@@ -86,27 +86,6 @@ namespace RdWebCamSysTrayApp
         private int _curImageAgeToDisplay = 0;
         private string _lastFrontDoorImageName = "";
 
-        // Info on a device in the config file
-        public class DeviceInfo
-        {
-            public string description;
-            public string deviceType;
-            public string hostname;
-            public string username;
-            public string password;
-            public int port;
-            public int notifyPort;
-            public string videoURL;
-            public string imageGrabPath;
-            public int imageGrabPoll;
-        }
-
-        // Data contained in the config file
-        public class ConfigFileInfo
-        {
-            public Dictionary<string, DeviceInfo> devices;
-        }
-
         public MainWindow()
         {
             InitializeComponent();
@@ -151,19 +130,17 @@ namespace RdWebCamSysTrayApp
 
             // Cat deterrent
             _catDeterrent = new CatDeterrent(_configFileInfo.devices["catCamera"].notifyPort, AutoShowWindowFn,
-                getIPAddressForName(_configFileInfo.devices["catDeterrent"].hostname), _configFileInfo.devices["catDeterrent"].port);
+                ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["catDeterrent"].hostname), _configFileInfo.devices["catDeterrent"].port);
 
             // Camera motion
-            _cameraMotion = new CameraMotion(_configFileInfo.devices["frontDoorCamera"].notifyPort, AutoShowWindowFn);
+            _cameraMotion = new CameraMotion(_configFileInfo.devices["frontDoorCamera"].notifyPort, DoNothingFn);
 
             // Front door
-            _frontDoorControl = new FrontDoorControl(getIPAddressForName(_configFileInfo.devices["frontDoorLock"].hostname),
-                            _configFileInfo.devices["frontDoorLock"].notifyPort,
-                            _configFileInfo.devices["frontDoorLock"].port,
+            _frontDoorControl = new FrontDoorControl(_configFileInfo.devices["frontDoorLock"],
                             DoorStatusRefresh);
 
             // Office blinds
-            string officeBlindsIPAddress = getIPAddressForName(_configFileInfo.devices["officeBlinds"].hostname);
+            string officeBlindsIPAddress = ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["officeBlinds"].hostname);
             _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
 
             // Domoticz
@@ -172,7 +149,7 @@ namespace RdWebCamSysTrayApp
             {
                 if (devInfo.Value.deviceType == "domoticz")
                 {
-                    string ipAddr = getIPAddressForName(devInfo.Value.hostname);
+                    string ipAddr = ConfigFileInfo.getIPAddressForName(devInfo.Value.hostname);
                     if (ipAddr.Length > 0)
                         domoticzIPAddresses.Add(ipAddr);
                 }
@@ -180,7 +157,7 @@ namespace RdWebCamSysTrayApp
             _domoticzControl = new DomoticzControl(domoticzIPAddresses);
 
             // LedMatrix
-            string ledMatrixIpAddress = getIPAddressForName(_configFileInfo.devices["officeMessageBoard"].hostname);
+            string ledMatrixIpAddress = ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["officeMessageBoard"].hostname);
             _ledMatrix = new LedMatrix(ledMatrixIpAddress);
 
             // Create the video decoder
@@ -198,14 +175,14 @@ namespace RdWebCamSysTrayApp
             // Audio in/out
 #if (TALK_TO_CAMERA)
             if (_configFileInfo.devices.ContainsKey("frontDoorCamera"))
-                _talkToAxisCamera = new TalkToAxisCamera(getIPAddressForName(_configFileInfo.devices["frontDoorCamera"].hostname), 80,
+                _talkToAxisCamera = new TalkToAxisCamera(ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["frontDoorCamera"].hostname), 80,
                             _configFileInfo.devices["frontDoorCamera"].username,
                             _configFileInfo.devices["frontDoorCamera"].password,
                             _localAudioDevices);
 #endif
 #if (LISTEN_TO_CAMERA)
             if (_configFileInfo.devices.ContainsKey("frontDoorCamera"))
-                _listenToAxisCamera = new ListenToAxisCamera(getIPAddressForName(_configFileInfo.devices["frontDoorCamera"].hostname), _localAudioDevices);
+                _listenToAxisCamera = new ListenToAxisCamera(ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["frontDoorCamera"].hostname), _localAudioDevices);
 #endif
             // Start Video
             StartVideo();
@@ -255,12 +232,13 @@ namespace RdWebCamSysTrayApp
 
         public void BringWindowToFront()
         {
+            //Win32Helper.ShowWindowNoActive(this);
             this.Show();
             this.WindowState = WindowState.Normal;
             this.Activate();
             this.Topmost = true;
             this.Topmost = false;
-            this.Focus();
+            //this.Focus();
         }
 
         public void ShowPopupWindow(int autoHideSecs)
@@ -356,6 +334,11 @@ namespace RdWebCamSysTrayApp
 #endif
                         });
             }
+        }
+
+        private void DoNothingFn()
+        {
+            // This is here to soak up camera motion events which currently do nothing - used to AutoShowWindowFn
         }
 
         private void AutoShowWindowFn()
@@ -711,22 +694,6 @@ namespace RdWebCamSysTrayApp
             switchImageDisplay(true);
             _curImageAgeToDisplay++;
             showImages();
-        }
-
-        private string getIPAddressForName(string hname)
-        {
-            IPAddress[] ips;
-            try
-            {
-                ips = Dns.GetHostAddresses(hname);
-                if (ips.Length > 0)
-                    return ips[0].ToString();
-            }
-            catch
-            {
-                logger.Info("Failed to find ip for name " + hname);
-            }
-            return "";
         }
     }
 }
