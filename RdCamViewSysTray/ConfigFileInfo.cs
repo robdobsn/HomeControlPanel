@@ -19,6 +19,7 @@ public class DeviceInfo
     public int imageGrabPoll;
     public int userNum;
     public string userPin;
+    public int motionDetectAutoShow;
 }
 
 // Data contained in the config file

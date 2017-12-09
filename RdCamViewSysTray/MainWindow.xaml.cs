@@ -133,7 +133,7 @@ namespace RdWebCamSysTrayApp
                 ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["catDeterrent"].hostname), _configFileInfo.devices["catDeterrent"].port);
 
             // Camera motion
-            _cameraMotion = new CameraMotion(_configFileInfo.devices["frontDoorCamera"].notifyPort, DoNothingFn);
+            _cameraMotion = new CameraMotion(_configFileInfo.devices["frontDoorCamera"].notifyPort, CameraMotionDetectFn);
 
             // Front door
             _frontDoorControl = new FrontDoorControl(_configFileInfo.devices["frontDoorLock"],
@@ -336,9 +336,13 @@ namespace RdWebCamSysTrayApp
             }
         }
 
-        private void DoNothingFn()
+        private void CameraMotionDetectFn()
         {
             // This is here to soak up camera motion events which currently do nothing - used to AutoShowWindowFn
+            if (_configFileInfo.devices["frontDoorCamera"].motionDetectAutoShow != 0)
+            {
+                AutoShowWindowFn();
+            }
         }
 
         private void AutoShowWindowFn()
