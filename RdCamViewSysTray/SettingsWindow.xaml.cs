@@ -27,27 +27,36 @@ namespace RdWebCamSysTrayApp
     public partial class SettingsWindow : MetroWindow
     {
         private AudioDevices _audioDevices;
+        private ConfigFileInfo _configFileInfo;
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public SettingsWindow(AudioDevices audioDevices)
+        public SettingsWindow(AudioDevices audioDevices, ConfigFileInfo configFileInfo)
         {
             _audioDevices = audioDevices;
+            _configFileInfo = configFileInfo;
 
             InitializeComponent();
 
             // Populate the combos
-            SpeakersCombo.ItemsSource = _audioDevices.GetOutDeviceInfo();
-            SpeakersCombo.SelectedValue = _audioDevices.GetCurWaveOutDeviceName();
-            MicrophoneCombo.ItemsSource = _audioDevices.GetInDeviceInfo();
-            MicrophoneCombo.SelectedValue = _audioDevices.GetCurWaveInDeviceName();
+            if (_audioDevices != null)
+            {
+                SpeakersCombo.ItemsSource = _audioDevices.GetOutDeviceInfo();
+                SpeakersCombo.SelectedValue = _audioDevices.GetCurWaveOutDeviceName();
+                MicrophoneCombo.ItemsSource = _audioDevices.GetInDeviceInfo();
+                MicrophoneCombo.SelectedValue = _audioDevices.GetCurWaveInDeviceName();
+            }
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
             logger.Info("SettingsWindow::OkButton_Clicked speakerscombo.selvalue {0}", SpeakersCombo.SelectedValue);
 
-            _audioDevices.SetWaveOutDeviceName((string)SpeakersCombo.SelectedValue);
-            _audioDevices.SetWaveInDeviceName((string)MicrophoneCombo.SelectedValue);
+            if (_audioDevices != null)
+            {
+                _audioDevices.SetWaveOutDeviceName((string)SpeakersCombo.SelectedValue);
+                _audioDevices.SetWaveInDeviceName((string)MicrophoneCombo.SelectedValue);
+            }
+            _configFileInfo.AcquireConfig();
 
             Properties.Settings.Default.Save();
             this.Close();

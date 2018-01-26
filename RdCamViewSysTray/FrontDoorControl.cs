@@ -17,6 +17,7 @@ using NLog;
 using Newtonsoft.Json;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
+using System.Net.NetworkInformation;
 
 namespace RdWebCamSysTrayApp
 {
@@ -90,7 +91,9 @@ namespace RdWebCamSysTrayApp
         // Timer for re-requesting notifications - in case door controller restarts
         private Timer _doorStatusTimer;
         private int _doorStatusRequestNotifyCount = 0;
+        private const int _doorStatusRequestResetTo = 1;
         private const int _doorStatusRequestResetAfter = 100;
+
 
 #if LISTEN_FOR_TCP_DOOR_STATUS
         // TCP Listener for door status and thread signal.
@@ -230,15 +233,37 @@ namespace RdWebCamSysTrayApp
             }
         }
 
+        public static IPAddress GetDefaultGateway()
+        {
+            return NetworkInterface
+                .GetAllNetworkInterfaces()
+                .Where(n => n.OperationalStatus == OperationalStatus.Up)
+                .Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
+                .SelectMany(n => n.GetIPProperties()?.GatewayAddresses)
+                .Select(g => g?.Address)
+                .Where(a => a != null)
+                .Where(a => a.AddressFamily == AddressFamily.InterNetwork)  // IP4
+                .Where(a => Array.FindIndex(a.GetAddressBytes(), b => b != 0) >= 0)
+                .FirstOrDefault();
+        }
+
         public static string GetLocalIPAddress()
         {
+            IPAddress ipGateway = GetDefaultGateway();
+
             var host = Dns.GetHostEntry(Dns.GetHostName());
-            // Favour 192.168.x.x addresses
+            // Favour IP4 192.168.x.x addresses on the same 255.255.255.0 subnet as the default gateway
             foreach (var ip in host.AddressList)
             {
                 if (ip.AddressFamily == AddressFamily.InterNetwork)
                 {
-                    if (ip.ToString().Substring(0, 8) == "192.168.")
+                    byte[] ipGWBytes = ipGateway.GetAddressBytes();
+                    byte[] ipBytes = ip.GetAddressBytes();
+                    bool bMatch = true;
+                    for (int i = 0; i < 3; i++)
+                        if (ipGWBytes[i] != ipBytes[i])
+                            bMatch = false;
+                    if (bMatch)
                         return ip.ToString();
                 }
             }
@@ -392,7 +417,9 @@ namespace RdWebCamSysTrayApp
                 {
                     _doorStatus.UpdateFromJson(recvStr);
                     _doorStatusRefreshCallback();
-//                    logger.Debug("Updating UI with  " + recvStr);
+                    //                    logger.Debug("Updating UI with  " + recvStr);
+                    // Reset the notification counter so we don't keep requesting notifications when we're already getting them
+                    _doorStatusRequestNotifyCount = _doorStatusRequestResetTo;
                 }
                 else
                 {

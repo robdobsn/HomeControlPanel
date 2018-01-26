@@ -33,7 +33,7 @@ namespace RdWebCamSysTrayApp
                 requester.OpenReadCompleted += new OpenReadCompletedEventHandler(web_req_completed);
                 requester.OpenReadAsync(uri);
                 
-                logger.Info("BlindsControl::ControlBlind " + blindsCommand);
+                logger.Info("BlindsControl::ControlBlind " + uri.ToString());
             }
             catch (HttpRequestException excp)
             {

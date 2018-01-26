@@ -29,7 +29,7 @@ namespace RdWebCamSysTrayApp
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
         // Config data
-        ConfigFileInfo _configFileInfo;
+        ConfigFileInfo _configFileInfo = new ConfigFileInfo();
 
         // Handlers for video streams - they display in an image
         private VideoStreamDisplays _videoStreamDisplays = new VideoStreamDisplays();
@@ -97,11 +97,8 @@ namespace RdWebCamSysTrayApp
             _controlToReceiveFocus = this.Settings;
 
             // Get configuration
-            using (StreamReader sr = new StreamReader("//macallan/Admin/Config/8DPDevices.json"))
-            {
-                string jsonData = sr.ReadToEnd();
-                _configFileInfo = JsonConvert.DeserializeObject<ConfigFileInfo>(jsonData);
-            }
+            _configFileInfo.SetCallbacks(AcquireConfigOk, AcquireConfigFailed);
+            _configFileInfo.AcquireConfig();
 
             // Notify icon
             _notifyIcon = new System.Windows.Forms.NotifyIcon();
@@ -128,42 +125,68 @@ namespace RdWebCamSysTrayApp
                 }
             });
 
+            // Door status images
+            doorLockedImages = new EasyButtonImage(@"res/locked-large.png", @"res/unlocked-large.png");
+            doorClosedImages = new EasyButtonImage(@"res/doorclosed-large.png", @"res/dooropen-large.png");
+            doorBellImages = new EasyButtonImage(@"res/doorbell-large-sq.png", @"res/doorbell-large.png");
+
+            // Start update timer for status
+            _dTimer.Tick += new EventHandler(dtimer_Tick);
+            _dTimer.Interval = new TimeSpan(0, 0, 1);
+            _dTimer.Start();
+
+            // Log startup
+            logger.Info("App Started");
+        }
+
+        private void StartDataAcquisition()
+        {
             // Cat deterrent
-            _catDeterrent = new CatDeterrent(_configFileInfo.devices["catCamera"].notifyPort, AutoShowWindowFn,
-                ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["catDeterrent"].hostname), _configFileInfo.devices["catDeterrent"].port);
+            DeviceInfo devInfo = _configFileInfo.GetDevice("catDeterrent");
+            if (devInfo != null)
+                _catDeterrent = new CatDeterrent(devInfo.notifyPort, AutoShowWindowFn,
+                        ConfigFileInfo.getIPAddressForName(devInfo.hostname), devInfo.port);
 
             // Camera motion
-            _cameraMotion = new CameraMotion(_configFileInfo.devices["frontDoorCamera"].notifyPort, CameraMotionDetectFn);
+            devInfo = _configFileInfo.GetDevice("frontDoorCamera");
+            if (devInfo != null)
+                _cameraMotion = new CameraMotion(devInfo.notifyPort, CameraMotionDetectFn);
 
             // Front door
-            _frontDoorControl = new FrontDoorControl(_configFileInfo.devices["frontDoorLock"],
-                            DoorStatusRefresh);
+            devInfo = _configFileInfo.GetDevice("frontDoorLock");
+            if (devInfo != null)
+                _frontDoorControl = new FrontDoorControl(devInfo, DoorStatusRefresh);
 
             // Office blinds
-            string officeBlindsIPAddress = ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["officeBlinds"].hostname);
-            _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
+            devInfo = _configFileInfo.GetDevice("officeBlinds");
+            if (devInfo != null)
+            {
+                string officeBlindsIPAddress = ConfigFileInfo.getIPAddressForName(devInfo.hostname);
+                _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
+            }
 
             // Domoticz
-            List<string> domoticzIPAddresses = new List<string>();
-            foreach (KeyValuePair<string, DeviceInfo> devInfo in _configFileInfo.devices)
-            {
-                if (devInfo.Value.deviceType == "domoticz")
-                {
-                    string ipAddr = ConfigFileInfo.getIPAddressForName(devInfo.Value.hostname);
-                    if (ipAddr.Length > 0)
-                        domoticzIPAddresses.Add(ipAddr);
-                }
-            }
+            List<string> domoticzIPAddresses = _configFileInfo.GetIPAddrByType("domoticz");
             _domoticzControl = new DomoticzControl(domoticzIPAddresses);
 
             // LedMatrix
-            string ledMatrixIpAddress = ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["officeMessageBoard"].hostname);
-            _ledMatrix = new LedMatrix(ledMatrixIpAddress);
+            devInfo = _configFileInfo.GetDevice("frontDoorLock");
+            if (devInfo != null)
+            {
+                string ledMatrixIpAddress = ConfigFileInfo.getIPAddressForName(devInfo.hostname);
+                _ledMatrix = new LedMatrix(ledMatrixIpAddress);
+            }
 
-            // Create the video decoder
-            _videoStreamDisplays.add(video1, 0, new Uri(_configFileInfo.devices["frontDoorCamera"].videoURL));
-            _videoStreamDisplays.add(video2, 0, new Uri(_configFileInfo.devices["garageCamera"].videoURL));
-            _videoStreamDisplays.add(video3, 0, new Uri(_configFileInfo.devices["catCamera"].videoURL));
+            // Create the video decoders for each video window
+            devInfo = _configFileInfo.GetDevice("frontDoorCamera");
+            if (devInfo != null)
+                _videoStreamDisplays.add(video1, 0, new Uri(devInfo.videoURL));
+            devInfo = _configFileInfo.GetDevice("garageCamera");
+            if (devInfo != null)
+                _videoStreamDisplays.add(video2, 0, new Uri(devInfo.videoURL));
+            devInfo = _configFileInfo.GetDevice("catCamera");
+            if (devInfo != null)
+                _videoStreamDisplays.add(video3, 0, new Uri(devInfo.videoURL));
 
             // Volume control
             _localAudioDevices = new AudioDevices();
@@ -174,34 +197,33 @@ namespace RdWebCamSysTrayApp
 
             // Audio in/out
 #if (TALK_TO_CAMERA)
-            if (_configFileInfo.devices.ContainsKey("frontDoorCamera"))
-                _talkToAxisCamera = new TalkToAxisCamera(ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["frontDoorCamera"].hostname), 80,
-                            _configFileInfo.devices["frontDoorCamera"].username,
-                            _configFileInfo.devices["frontDoorCamera"].password,
-                            _localAudioDevices);
+            devInfo = _configFileInfo.GetDevice("frontDoorCamera");
+            if (devInfo != null)
+                _talkToAxisCamera = new TalkToAxisCamera(ConfigFileInfo.getIPAddressForName(devInfo.hostname), 80,
+                            devInfo.username, devInfo.password, _localAudioDevices);
 #endif
 #if (LISTEN_TO_CAMERA)
-            if (_configFileInfo.devices.ContainsKey("frontDoorCamera"))
-                _listenToAxisCamera = new ListenToAxisCamera(ConfigFileInfo.getIPAddressForName(_configFileInfo.devices["frontDoorCamera"].hostname), _localAudioDevices);
+            devInfo = _configFileInfo.GetDevice("frontDoorCamera");
+            if (devInfo != null)
+                _listenToAxisCamera = new ListenToAxisCamera(ConfigFileInfo.getIPAddressForName(devInfo.hostname), _localAudioDevices);
 #endif
             // Start Video
             StartVideo();
 
-            // Door status images
-            doorLockedImages = new EasyButtonImage(@"res/locked-large.png", @"res/unlocked-large.png");
-            doorClosedImages = new EasyButtonImage(@"res/doorclosed-large.png", @"res/dooropen-large.png");
-            doorBellImages = new EasyButtonImage(@"res/doorbell-large-sq.png", @"res/doorbell-large.png");
-
             // Start getting updates from front door
             _frontDoorControl.StartUpdates();
+        }
 
-            // Start update timer for status
-            _dTimer.Tick += new EventHandler(dtimer_Tick);
-            _dTimer.Interval = new TimeSpan(0, 0, 1);
-            _dTimer.Start();
+        private void AcquireConfigOk()
+        {
+            logger.Info("Got config ok");
+            StartDataAcquisition();
+        }
 
-            // Log startup
-            logger.Info("App Started");
+        private void AcquireConfigFailed()
+        {
+            logger.Info("Failed to get config");
+
         }
 
         private void Window_Closed(object sender, EventArgs e)
@@ -284,7 +306,7 @@ namespace RdWebCamSysTrayApp
         private void StartListen_Click(object sender, RoutedEventArgs e)
         {
 #if (LISTEN_TO_CAMERA)
-            if (!_listenToAxisCamera.IsListening())
+            if (_listenToAxisCamera != null && !_listenToAxisCamera.IsListening())
                 _listenToAxisCamera.Start();
 #endif
             _controlToReceiveFocus.Focus();
@@ -294,7 +316,7 @@ namespace RdWebCamSysTrayApp
         private void StopListen_Click(object sender, RoutedEventArgs e)
         {
 #if (LISTEN_TO_CAMERA)
-            if (_listenToAxisCamera.IsListening())
+            if (_listenToAxisCamera != null && _listenToAxisCamera.IsListening())
                 _listenToAxisCamera.Stop();
 #endif
             _controlToReceiveFocus.Focus();
@@ -304,10 +326,12 @@ namespace RdWebCamSysTrayApp
         private void StopTalkAndListen()
         {
 #if (TALK_TO_CAMERA)
-            _talkToAxisCamera.StopTalk();
+            if (_talkToAxisCamera != null)
+                _talkToAxisCamera.StopTalk();
 #endif
 #if (LISTEN_TO_CAMERA)
-            _listenToAxisCamera.Stop();
+            if (_listenToAxisCamera != null)
+                _listenToAxisCamera.Stop();
 #endif
         }
 
@@ -339,9 +363,11 @@ namespace RdWebCamSysTrayApp
         private void CameraMotionDetectFn()
         {
             // This is here to soak up camera motion events which currently do nothing - used to AutoShowWindowFn
-            if (_configFileInfo.devices["frontDoorCamera"].motionDetectAutoShow != 0)
+            DeviceInfo devInfo = _configFileInfo.GetDevice("frontDoorCamera");
+            if (devInfo != null)
             {
-                AutoShowWindowFn();
+                if (devInfo.motionDetectAutoShow != 0)
+                    AutoShowWindowFn();
             }
         }
 
@@ -356,46 +382,52 @@ namespace RdWebCamSysTrayApp
 
         private void Unlock_Main_Click(object sender, RoutedEventArgs e)
         {
-            _frontDoorControl.UnlockMainDoor();
+            if (_frontDoorControl != null)
+                _frontDoorControl.UnlockMainDoor();
             _controlToReceiveFocus.Focus();
         }
 
         private void Lock_Main_Click(object sender, RoutedEventArgs e)
         {
-            _frontDoorControl.LockMainDoor();
+            if (_frontDoorControl != null)
+                _frontDoorControl.LockMainDoor();
             _controlToReceiveFocus.Focus();
         }
 
         private void Unlock_Inner_Click(object sender, RoutedEventArgs e)
         {
-            _frontDoorControl.UnlockInnerDoor();
+            if (_frontDoorControl != null)
+                _frontDoorControl.UnlockInnerDoor();
             _controlToReceiveFocus.Focus();
         }
 
         private void Lock_Inner_Click(object sender, RoutedEventArgs e)
         {
-            _frontDoorControl.LockInnerDoor();
+            if (_frontDoorControl != null)
+                _frontDoorControl.LockInnerDoor();
             _controlToReceiveFocus.Focus();
         }
 
         private void Settings_Click(object sender, RoutedEventArgs e)
         {
             _controlToReceiveFocus.Focus();
-            SettingsWindow sw = new SettingsWindow(_localAudioDevices);
+            SettingsWindow sw = new SettingsWindow(_localAudioDevices, _configFileInfo);
             sw.Show();
         }
 
         private void outSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             float ov = (float)(e.NewValue / 100);
-            _localAudioDevices.SetOutVolumeWhenListening(ov);
+            if (_localAudioDevices != null)
+                _localAudioDevices.SetOutVolumeWhenListening(ov);
             Properties.Settings.Default.SpkrVol = ov;
         }
 
         private void inSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
             float iv = (float)(e.NewValue / 100);
-            _localAudioDevices.SetInVolumeWhenTalking(iv);
+            if (_localAudioDevices != null)
+                _localAudioDevices.SetInVolumeWhenTalking(iv);
             Properties.Settings.Default.MicVol = iv;
         }
 
@@ -403,7 +435,7 @@ namespace RdWebCamSysTrayApp
         private void TalkButton_PreviewMouseDown(object sender, MouseButtonEventArgs e)
         {
 #if (TALK_TO_CAMERA)
-            if (!_talkToAxisCamera.IsTalking())
+            if (_talkToAxisCamera != null && !_talkToAxisCamera.IsTalking())
             {
                 // TalkButton.Background = System.Windows.Media.Brushes.Red;
                 _talkToAxisCamera.StartTalk();
@@ -414,7 +446,7 @@ namespace RdWebCamSysTrayApp
         private void TalkButton_PreviewMouseUp(object sender, MouseButtonEventArgs e)
         {
 #if (TALK_TO_CAMERA)
-            if (_talkToAxisCamera.IsTalking())
+            if (_talkToAxisCamera != null && _talkToAxisCamera.IsTalking())
             {
                 _talkToAxisCamera.StopTalk();
             }
@@ -424,6 +456,8 @@ namespace RdWebCamSysTrayApp
 
         private BitmapImage GetImageFromFolder(string folder, int imageAgeZeroNewest)
         {
+            if (folder.Trim().Length == 0)
+                return null;
             // Find images in folder sorted by age
             DirectoryInfo info = new DirectoryInfo(folder);
             FileInfo[] files = info.GetFiles("*.jpg").OrderBy(p => p.CreationTime).ToArray();
@@ -492,145 +526,170 @@ namespace RdWebCamSysTrayApp
             }
 
             // Poll for new motion detected if required
-            if (_configFileInfo.devices["frontDoorCamera"].imageGrabPoll != 0)
+            DeviceInfo devInfo = _configFileInfo.GetDevice("frontDoorCamera");
+            if (devInfo != null)
             {
-                string folder = _configFileInfo.devices["frontDoorCamera"].imageGrabPath;
-                DirectoryInfo info = new DirectoryInfo(folder);
-                FileInfo[] files = info.GetFiles("*.jpg").OrderBy(p => p.CreationTime).ToArray();
-                if (files.Length <= 0)
-                    return;
-                string newestFname = files[files.Length - 1].Name;
-                if (_lastFrontDoorImageName != newestFname)
+                if (devInfo.imageGrabPoll != 0)
                 {
-                    _lastFrontDoorImageName = newestFname;
-                    AutoShowWindowFn();
-                    showImages();
+                    string folder = devInfo.imageGrabPath;
+                    DirectoryInfo info = new DirectoryInfo(folder);
+                    FileInfo[] files = info.GetFiles("*.jpg").OrderBy(p => p.CreationTime).ToArray();
+                    if (files.Length <= 0)
+                        return;
+                    string newestFname = files[files.Length - 1].Name;
+                    if (_lastFrontDoorImageName != newestFname)
+                    {
+                        _lastFrontDoorImageName = newestFname;
+                        AutoShowWindowFn();
+                        showImages();
+                    }
                 }
             }
-
         }
 
         private void RobsUpButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(0, "up");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(0, "up");
             _controlToReceiveFocus.Focus();
         }
 
         private void LeftUpButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(1, "up");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(1, "up");
             _controlToReceiveFocus.Focus();
         }
 
         private void LeftMidUpButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(2, "up");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(2, "up");
             _controlToReceiveFocus.Focus();
         }
 
         private void RightMidUpButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(3, "up");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(3, "up");
             _controlToReceiveFocus.Focus();
         }
 
         private void RightUpButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(4, "up");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(4, "up");
             _controlToReceiveFocus.Focus();
         }
 
         private void RobsStopButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(0, "stop");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(0, "stop");
             _controlToReceiveFocus.Focus();
         }
 
         private void LeftStopButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(1, "stop");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(1, "stop");
             _controlToReceiveFocus.Focus();
         }
 
         private void LeftMidStopButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(2, "stop");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(2, "stop");
             _controlToReceiveFocus.Focus();
         }
 
         private void RightMidStopButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(3, "stop");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(3, "stop");
             _controlToReceiveFocus.Focus();
         }
 
         private void RightStopButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(4, "stop");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(4, "stop");
             _controlToReceiveFocus.Focus();
         }
 
         private void RobsDownButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(0, "down");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(0, "down");
             _controlToReceiveFocus.Focus();
         }
 
         private void LeftDownButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(1, "down");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(1, "down");
             _controlToReceiveFocus.Focus();
         }
 
         private void LeftMidDownButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(2, "down");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(2, "down");
             _controlToReceiveFocus.Focus();
         }
 
         private void RightMidDownButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(3, "down");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(3, "down");
             _controlToReceiveFocus.Focus();
         }
 
         private void RightDownButton_Click(object sender, RoutedEventArgs e)
         {
-            _officeBlindsControl.ControlBlind(4, "down");
+            if (_officeBlindsControl != null)
+                _officeBlindsControl.ControlBlind(4, "down");
             _controlToReceiveFocus.Focus();
         }
 
         private void OfficeLightsMoodButton_Click(object sender, RoutedEventArgs e)
         {
-            _domoticzControl.SendGroupCommand("Office - Mood");
+            if (_domoticzControl != null)
+                _domoticzControl.SendGroupCommand("Office - Mood");
         }
 
         private void OfficeLightsOffButton_Click(object sender, RoutedEventArgs e)
         {
-            _domoticzControl.SendGroupCommand("Office - Off");
+            if (_domoticzControl != null)
+                _domoticzControl.SendGroupCommand("Office - Off");
         }
         private void TextMatrixSendButton_Click(object sender, RoutedEventArgs e)
         {
-            _ledMatrix.SendMessage(LEDMatrixText.Text);
+            if (_ledMatrix != null)
+                _ledMatrix.SendMessage(LEDMatrixText.Text);
         }
         private void TextMatrixStopAlertButton_Click(object sender, RoutedEventArgs e)
         {
-            _ledMatrix.StopAlert();
+            if (_ledMatrix != null)
+                _ledMatrix.StopAlert();
         }
         private void TextMatrixClearButton_Click(object sender, RoutedEventArgs e)
         {
-            _ledMatrix.Clear();
+            if (_ledMatrix != null)
+                _ledMatrix.Clear();
         }
 
         private void SquirtButton_MouseDown(object sender, MouseButtonEventArgs e)
         {
-            _catDeterrent.squirt(true);
+            if (_catDeterrent != null)
+                _catDeterrent.squirt(true);
             _controlToReceiveFocus.Focus();
         }
 
         private void SquirtButton_MouseUp(object sender, MouseButtonEventArgs e)
         {
-            _catDeterrent.squirt(false);
+            if (_catDeterrent != null)
+                _catDeterrent.squirt(false);
             _controlToReceiveFocus.Focus();
         }
 
@@ -679,9 +738,12 @@ namespace RdWebCamSysTrayApp
 
         private void showImages()
         {
-            image1.Source = GetImageFromFolder(_configFileInfo.devices["frontDoorCamera"].imageGrabPath, _curImageAgeToDisplay);
-            image2.Source = GetImageFromFolder(_configFileInfo.devices["garageCamera"].imageGrabPath, _curImageAgeToDisplay);
-            image3.Source = GetImageFromFolder(_configFileInfo.devices["catCamera"].imageGrabPath, _curImageAgeToDisplay);
+            DeviceInfo devInfo = _configFileInfo.GetDevice("frontDoorCamera");
+            image1.Source = GetImageFromFolder(devInfo != null ? devInfo.imageGrabPath : "", _curImageAgeToDisplay);
+            devInfo = _configFileInfo.GetDevice("garageCamera");
+            image2.Source = GetImageFromFolder(devInfo != null ? devInfo.imageGrabPath : "", _curImageAgeToDisplay);
+            devInfo = _configFileInfo.GetDevice("catCamera");
+            image3.Source = GetImageFromFolder(devInfo != null ? devInfo.imageGrabPath : "", _curImageAgeToDisplay);
         }
 
         private void BtnImageNext_Click(object sender, RoutedEventArgs e)
