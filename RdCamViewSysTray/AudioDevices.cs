@@ -12,10 +12,8 @@ namespace RdWebCamSysTrayApp
 {
     public class AudioDevices
     {
-        private NAudio.CoreAudioApi.MMDevice _curInDevice;
-        private NAudio.CoreAudioApi.MMDevice _curOutDevice;
-        private int _curWaveInDeviceInfoIdx = 0;
-        private int _curWaveOutDeviceInfoIdx = 0;
+        private DeviceInfo _curInDeviceInfo;
+        private DeviceInfo _curOutDeviceInfo;
         List<DeviceInfo> inDeviceInfo;
         List<DeviceInfo> outDeviceInfo;
         private bool _isListening = false;
@@ -45,6 +43,7 @@ namespace RdWebCamSysTrayApp
             public int waveDeviceNumber { get; set; }
             public WaveInCapabilities waveInCaps { get; set; }
             public WaveOutCapabilities waveOutCaps { get; set; }
+            public NAudio.CoreAudioApi.MMDevice device { get; set; }
 
         }
 
@@ -61,6 +60,7 @@ namespace RdWebCamSysTrayApp
 
             // Get and cache device info
             UpdateDeviceInfo();
+            SetupAudioDevicesFromConfig();
         }
 
         public void UpdateDeviceInfo()
@@ -109,12 +109,8 @@ namespace RdWebCamSysTrayApp
                                 devInfo.deviceName = dev.FriendlyName;
                                 devInfo.deviceId = dev.ID;
                                 devInfo.waveInCaps = inDevCaps[idx];
+                                devInfo.device = dev;
                                 inDeviceInfo.Add(devInfo);
-                                if (_curInDevice == null)
-                                {
-                                    _curInDevice = dev;
-                                    _curWaveInDeviceInfoIdx = inDeviceInfo.Count - 1;
-                                }
                             }
                         for (int idx = 0; idx < outDevCaps.Count; idx++)
                             if (DevicesMatch(outDevCaps[idx].ProductName, dev.FriendlyName))
@@ -124,18 +120,9 @@ namespace RdWebCamSysTrayApp
                                 devInfo.deviceName = dev.FriendlyName;
                                 devInfo.deviceId = dev.ID;
                                 devInfo.waveOutCaps = outDevCaps[idx];
+                                devInfo.device = dev;
                                 outDeviceInfo.Add(devInfo);
-                                bool bUseThis = false;
-                                if (_curOutDevice == null)
-                                    bUseThis = true;
-                                else if (!_curOutDevice.FriendlyName.Contains("Speakers") && dev.FriendlyName.Contains("Speakers"))
-                                    bUseThis = true;
-                                if (bUseThis)
-                                {
-                                    _curOutDevice = dev;
-                                    _curWaveOutDeviceInfoIdx = outDeviceInfo.Count - 1;
-                                }
-                            }                            
+                            }
 
                     }
                     catch (Exception ex)
@@ -150,6 +137,33 @@ namespace RdWebCamSysTrayApp
                 //When something happend that prevent us to iterate through the devices
                 logger.Error("AudioDevices::UpdateDeviceInfo Could not enumerate devices due to an excepion: {0}", ex.Message);
             }
+        }
+
+        public void SetupAudioDevicesFromConfig()
+        {
+            // Go through out devices and find a match
+            foreach (DeviceInfo devInfo in outDeviceInfo)
+            {
+                if (_curOutDeviceInfo == null)
+                    _curOutDeviceInfo = devInfo;
+                if (devInfo.deviceName == Properties.Settings.Default.Speakers)
+                {
+                    _curOutDeviceInfo = devInfo;
+                    break;
+                }
+            }
+            // Go through in devices and find a match
+            foreach (DeviceInfo devInfo in inDeviceInfo)
+            {
+                if (_curInDeviceInfo == null)
+                    _curInDeviceInfo = devInfo;
+                if (devInfo.deviceName == Properties.Settings.Default.Microphone)
+                {
+                    _curInDeviceInfo = devInfo;
+                    break;
+                }
+            }
+
         }
 
         private bool DevicesMatch(string dev1, string dev2)
@@ -260,11 +274,15 @@ namespace RdWebCamSysTrayApp
             try
             {
                 //Set at required volume
-                _curOutDevice.AudioEndpointVolume.MasterVolumeLevelScalar = volLevel;
-                _curOutDevice.AudioEndpointVolume.Mute = bMute;
+                if (_curOutDeviceInfo != null)
+                {
+                    _curOutDeviceInfo.device.AudioEndpointVolume.MasterVolumeLevelScalar = volLevel;
+                    _curOutDeviceInfo.device.AudioEndpointVolume.Mute = bMute;
+                }
 
                 //Get its audio volume
-                logger.Info("AudioDevices::SetOutVolume Volume of {0} is {1}", _curOutDevice.FriendlyName, _curOutDevice.AudioEndpointVolume.MasterVolumeLevelScalar.ToString());
+                logger.Info("AudioDevices::SetOutVolume Volume of {0} is {1}", _curOutDeviceInfo.deviceName, 
+                                _curOutDeviceInfo.device.AudioEndpointVolume.MasterVolumeLevelScalar.ToString());
             }
             catch (Exception excp)
             {
@@ -291,7 +309,8 @@ namespace RdWebCamSysTrayApp
         {
             try
             {
-                return _curOutDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
+                if (_curOutDeviceInfo != null)
+                    return _curOutDeviceInfo.device.AudioEndpointVolume.MasterVolumeLevelScalar;
             }
             catch (Exception excp)
             {
@@ -304,7 +323,8 @@ namespace RdWebCamSysTrayApp
         {
             try
             {
-                return _curOutDevice.AudioEndpointVolume.Mute;
+                if (_curOutDeviceInfo != null)
+                    return _curOutDeviceInfo.device.AudioEndpointVolume.Mute;
             }
             catch (Exception excp)
             {
@@ -317,7 +337,8 @@ namespace RdWebCamSysTrayApp
         {
             try
             {
-                _curOutDevice.AudioEndpointVolume.Mute = mute;
+                if (_curOutDeviceInfo != null)
+                    _curOutDeviceInfo.device.AudioEndpointVolume.Mute = mute;
             }
             catch (Exception excp)
             {
@@ -330,7 +351,8 @@ namespace RdWebCamSysTrayApp
             float lev = 0;
             try
             {
-                lev = _curInDevice.AudioEndpointVolume.MasterVolumeLevelScalar;
+                if (_curInDeviceInfo != null)
+                    lev = _curInDeviceInfo.device.AudioEndpointVolume.MasterVolumeLevelScalar;
             }
             catch (Exception excp)
             {
@@ -345,7 +367,8 @@ namespace RdWebCamSysTrayApp
             bool mute = false;
             try
             {
-                mute = _curInDevice.AudioEndpointVolume.Mute;
+                if (_curInDeviceInfo != null)
+                    mute = _curInDeviceInfo.device.AudioEndpointVolume.Mute;
             }
             catch (Exception excp)
             {
@@ -359,11 +382,15 @@ namespace RdWebCamSysTrayApp
             try
             {
                 //Set at required volume
-                _curInDevice.AudioEndpointVolume.MasterVolumeLevelScalar = volLevel;
-                _curInDevice.AudioEndpointVolume.Mute = bMute;
+                if (_curInDeviceInfo != null)
+                {
+                    _curInDeviceInfo.device.AudioEndpointVolume.MasterVolumeLevelScalar = volLevel;
+                    _curInDeviceInfo.device.AudioEndpointVolume.Mute = bMute;
+                }
 
                 //Get its audio volume
-                logger.Info("Volume of {0} is {1}", _curInDevice.FriendlyName, _curInDevice.AudioEndpointVolume.MasterVolumeLevelScalar.ToString());
+                logger.Info("Volume of {0} is {1}", _curInDeviceInfo.deviceName,
+                                _curInDeviceInfo.device.AudioEndpointVolume.MasterVolumeLevelScalar.ToString());
             }
             catch (Exception excp)
             {
@@ -383,54 +410,30 @@ namespace RdWebCamSysTrayApp
 
         public int GetCurWaveOutDeviceNumber()
         {
-            if (_curWaveOutDeviceInfoIdx < outDeviceInfo.Count)
-                return outDeviceInfo[_curWaveOutDeviceInfoIdx].waveDeviceNumber;
+            if (_curOutDeviceInfo != null)
+                return _curOutDeviceInfo.waveDeviceNumber;
             return 0;
         }
 
         public int GetCurWaveInDeviceNumber()
         {
-            if (_curWaveInDeviceInfoIdx < inDeviceInfo.Count)
-                return inDeviceInfo[_curWaveInDeviceInfoIdx].waveDeviceNumber;
+            if (_curInDeviceInfo != null)
+                return _curInDeviceInfo.waveDeviceNumber;
             return 0;
         }
 
         public string GetCurWaveOutDeviceName()
         {
-            if (_curWaveOutDeviceInfoIdx < outDeviceInfo.Count)
-                return outDeviceInfo[_curWaveOutDeviceInfoIdx].deviceName;
+            if (_curOutDeviceInfo != null)
+                return _curOutDeviceInfo.deviceName;
             return "";
         }
 
         public string GetCurWaveInDeviceName()
         {
-            if (_curWaveInDeviceInfoIdx < inDeviceInfo.Count)
-                return inDeviceInfo[_curWaveInDeviceInfoIdx].deviceName;
+            if (_curInDeviceInfo != null)
+                return _curInDeviceInfo.deviceName;
             return "";
-        }
-
-        public void SetWaveOutDeviceName(string devName)
-        {
-            for (int i = 0; i < outDeviceInfo.Count; i++)
-            {
-                if (devName == outDeviceInfo[i].deviceName)
-                {
-                    _curWaveOutDeviceInfoIdx = i;
-                    break;
-                }
-            }
-        }
-
-        public void SetWaveInDeviceName(string devName)
-        {
-            for (int i = 0; i < inDeviceInfo.Count; i++)
-            {
-                if (devName == inDeviceInfo[i].deviceName)
-                {
-                    _curWaveInDeviceInfoIdx = i;
-                    break;
-                }
-            }
         }
 
         public void SetOutVolumeWhenListening(float ov)

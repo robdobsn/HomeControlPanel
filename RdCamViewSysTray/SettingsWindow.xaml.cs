@@ -40,6 +40,7 @@ namespace RdWebCamSysTrayApp
             // Populate the combos
             if (_audioDevices != null)
             {
+                _audioDevices.UpdateDeviceInfo();
                 SpeakersCombo.ItemsSource = _audioDevices.GetOutDeviceInfo();
                 SpeakersCombo.SelectedValue = _audioDevices.GetCurWaveOutDeviceName();
                 MicrophoneCombo.ItemsSource = _audioDevices.GetInDeviceInfo();
@@ -51,14 +52,17 @@ namespace RdWebCamSysTrayApp
         {
             logger.Info("SettingsWindow::OkButton_Clicked speakerscombo.selvalue {0}", SpeakersCombo.SelectedValue);
 
-            if (_audioDevices != null)
-            {
-                _audioDevices.SetWaveOutDeviceName((string)SpeakersCombo.SelectedValue);
-                _audioDevices.SetWaveInDeviceName((string)MicrophoneCombo.SelectedValue);
-            }
-            _configFileInfo.AcquireConfig();
+            //_audioDevices.SetWaveOutDeviceByName((string)SpeakersCombo.SelectedValue);
+            //_audioDevices.SetWaveInDeviceByName((string)MicrophoneCombo.SelectedValue);
 
             Properties.Settings.Default.Save();
+
+            _configFileInfo.AcquireConfig();
+
+            if (_audioDevices != null)
+            {
+                _audioDevices.SetupAudioDevicesFromConfig();
+            }
             this.Close();
         }
     }
