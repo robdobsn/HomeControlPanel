@@ -161,8 +161,7 @@ namespace RdWebCamSysTrayApp
             devInfo = _configFileInfo.GetDevice("officeBlinds");
             if (devInfo != null)
             {
-                string officeBlindsIPAddress = ConfigFileInfo.getIPAddressForName(devInfo.hostname);
-                _officeBlindsControl = new BlindsControl(officeBlindsIPAddress);
+                _officeBlindsControl = new BlindsControl(devInfo);
             }
 
             // Domoticz

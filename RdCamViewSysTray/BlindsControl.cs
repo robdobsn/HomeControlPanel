@@ -1,4 +1,7 @@
-﻿using System;
+﻿//#define USE_HTTP_REST_API
+#define USE_UDP_REST_API
+
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
@@ -6,6 +9,7 @@ using System.Threading.Tasks;
 using NLog;
 using System.Net.Http;
 using System.Net;
+using System.Net.Sockets;
 
 namespace RdWebCamSysTrayApp
 {
@@ -13,20 +17,23 @@ namespace RdWebCamSysTrayApp
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private string _ipAddress;
+        private int __blindsControlRestAPIPort;
 
-        public BlindsControl(string ipAddress)
+        public BlindsControl(DeviceInfo devInfo)
         {
-            _ipAddress = ipAddress;
+            _ipAddress = ConfigFileInfo.getIPAddressForName(devInfo.hostname);
+            __blindsControlRestAPIPort = devInfo.port;
         }
 
         public void ControlBlind(int blindNumber, string direction)
         {
+        string blindsCommand = "blind/" + (blindNumber + 1).ToString() + "/" + direction + "/pulse";
+#if USE_HTTP_REST_API
             try
             {
 //                string[] shadeNames = { "workroom-shade", "office1-shade", "office2-shade", "office3-shade", "office4-shade" };
 //                string blindsCommand = shadeNames[blindNumber] + "-" + direction + "/pulse";
-                string blindsCommand = (blindNumber + 1).ToString() + "/" + direction + "/pulse";
-                Uri uri = new Uri("http://" + _ipAddress + "/blind/" + blindsCommand);
+                Uri uri = new Uri("http://" + _ipAddress + "/" + blindsCommand);
 
                 // Using WebClient as can't get HttpClient to not block
                 WebClient requester = new WebClient();
@@ -39,7 +46,24 @@ namespace RdWebCamSysTrayApp
             {
                 logger.Error("BlindsControl::ControlBlind exception {0}", excp.Message);
             }
+#endif
+#if USE_UDP_REST_API
 
+            try
+            {
+                string ipAddr = _ipAddress;
+                Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
+                IPAddress serverAddr = IPAddress.Parse(ipAddr);
+                IPEndPoint endPoint = new IPEndPoint(serverAddr, __blindsControlRestAPIPort);
+                byte[] send_buffer = Encoding.ASCII.GetBytes(blindsCommand);
+                sock.SendTo(send_buffer, endPoint);
+                logger.Debug("Sent command to blinds " + ipAddr + " port " + __blindsControlRestAPIPort.ToString() + " by UDP " + blindsCommand);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("BlindsControl::ControlBlind exception {0}", excp.Message);
+            }
+#endif
 
         }
 
