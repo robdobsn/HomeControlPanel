@@ -1,5 +1,5 @@
-﻿//#define USE_HTTP_REST_API
-#define USE_UDP_REST_API
+﻿#define USE_HTTP_REST_API
+//#define USE_UDP_REST_API
 
 using System;
 using System.Collections.Generic;
@@ -27,7 +27,7 @@ namespace RdWebCamSysTrayApp
 
         public void ControlBlind(int blindNumber, string direction)
         {
-        string blindsCommand = "blind/" + (blindNumber + 1).ToString() + "/" + direction + "/pulse";
+        string blindsCommand = "shade/" + (blindNumber + 1).ToString() + "/" + direction + "/pulse";
 #if USE_HTTP_REST_API
             try
             {
