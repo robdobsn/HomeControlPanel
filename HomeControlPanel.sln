@@ -3,7 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RdCamViewSysTray", "RdCamViewSysTray\RdCamViewSysTray.csproj", "{92B7E72D-C827-4B0F-AC82-B80984DBE5CB}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "HomeControlPanel", "HomeControlPanel\HomeControlPanel.csproj", "{92B7E72D-C827-4B0F-AC82-B80984DBE5CB}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

@@ -7,11 +7,11 @@ using System.Windows;
 // General Information about an assembly is controlled through the following 
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
-[assembly: AssemblyTitle("RdCamViewSysTray")]
+[assembly: AssemblyTitle("HomeControlPanel")]
 [assembly: AssemblyDescription("")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
-[assembly: AssemblyProduct("RdCamViewSysTray")]
+[assembly: AssemblyProduct("HomeControlPanel")]
 [assembly: AssemblyCopyright("Copyright © Rob Dobson 2013-2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
