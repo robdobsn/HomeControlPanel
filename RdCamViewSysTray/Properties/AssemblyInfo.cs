@@ -12,7 +12,7 @@ using System.Windows;
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("")]
 [assembly: AssemblyProduct("RdCamViewSysTray")]
-[assembly: AssemblyCopyright("Copyright © Rob Dobson 2013")]
+[assembly: AssemblyCopyright("Copyright © Rob Dobson 2013-2018")]
 [assembly: AssemblyTrademark("")]
 [assembly: AssemblyCulture("")]
 

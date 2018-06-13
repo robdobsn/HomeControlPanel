@@ -8,7 +8,7 @@ using System.Threading.Tasks;
 using System.Timers;
 using NLog;
 
-namespace RdWebCamSysTrayApp
+namespace HomeControlPanel
 {
     public class AudioDevices
     {

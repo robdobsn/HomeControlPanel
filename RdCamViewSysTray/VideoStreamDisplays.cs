@@ -4,7 +4,7 @@ using System.Collections.Generic;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
 
-namespace RdWebCamSysTrayApp
+namespace HomeControlPanel
 {
     internal class VideoStreamDisplay
     {

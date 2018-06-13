@@ -11,7 +11,7 @@ using System.Net.Http;
 using System.Net;
 using System.Net.Sockets;
 
-namespace RdWebCamSysTrayApp
+namespace HomeControlPanel
 {
     class BlindsControl
     {
@@ -95,11 +95,11 @@ namespace RdWebCamSysTrayApp
         //        // Above three lines can be replaced with new helper method in following line 
         //        // string body = await client.GetStringAsync(uri);
 
-        //        logger.Info("FrontDoorControl::ControlDoor response {0}", responseBody);
+        //        logger.Info("DoorControl::ControlDoor response {0}", responseBody);
         //    }
         //    catch (HttpRequestException excp)
         //    {
-        //        logger.Error("FrontDoorControl::ControlDoor exception {0}", excp.Message);
+        //        logger.Error("DoorControl::ControlDoor exception {0}", excp.Message);
         //    }
         //}
 

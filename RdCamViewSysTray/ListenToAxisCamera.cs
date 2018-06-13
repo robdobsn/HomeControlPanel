@@ -12,7 +12,7 @@ using System.Windows.Threading;
 using System.Timers;
 using NLog;
 
-namespace RdWebCamSysTrayApp
+namespace HomeControlPanel
 {
     public class RawSourceWaveStream : WaveStream
     {

@@ -18,7 +18,7 @@ using System.Linq;
 using System.Windows.Media.Imaging;
 using System.Net;
 
-namespace RdWebCamSysTrayApp
+namespace HomeControlPanel
 {
     /// <summary>
     /// Interaction logic for MainWindow.xaml
@@ -44,7 +44,7 @@ namespace RdWebCamSysTrayApp
 #endif
 
         // Door control
-        private FrontDoorControl _frontDoorControl;
+        private DoorControl _frontDoorControl;
         private DateTime? _doorStatusRefreshTime = null;
 
         // Cat deterrent
@@ -155,7 +155,7 @@ namespace RdWebCamSysTrayApp
             // Front door
             devInfo = _configFileInfo.GetDevice("frontDoorLock");
             if (devInfo != null)
-                _frontDoorControl = new FrontDoorControl(devInfo, DoorStatusRefresh);
+                _frontDoorControl = new DoorControl(devInfo, DoorStatusRefresh);
 
             // Office blinds
             devInfo = _configFileInfo.GetDevice("officeBlinds");
@@ -478,7 +478,7 @@ namespace RdWebCamSysTrayApp
 
         private void ShowDoorStatus()
         {
-            FrontDoorControl.DoorStatus doorStatus;
+            DoorControl.DoorStatus doorStatus;
             _frontDoorControl.GetDoorStatus(out doorStatus);
             if (doorStatus._mainLocked)
                 mainDoorLockState.Source = doorLockedImages.Img1();

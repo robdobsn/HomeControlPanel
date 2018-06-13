@@ -1,8 +1,10 @@
-﻿#define LISTEN_FOR_UDP_DOOR_STATUS
+﻿//#define USE_PARTICLE_API
+#define USE_HTTP_REST_API
+//#define USE_UDP_REST_API
+//#define USE_MANAGED_MQTT
+//#define LISTEN_FOR_UDP_DOOR_STATUS
 //#define LISTEN_FOR_TCP_DOOR_STATUS
-//#define USE_PARTICLE_API
-//#define USE_HTTP_REST_API
-#define USE_UDP_REST_API
+#define POLL_FOR_TCP_DOOR_STATUS
 
 using System;
 using System.Collections.Generic;
@@ -18,15 +20,34 @@ using Newtonsoft.Json;
 using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Net.NetworkInformation;
+using MQTTnet;
+using MQTTnet.ManagedClient;
+using MQTTnet.Client;
 
-namespace RdWebCamSysTrayApp
+namespace HomeControlPanel
 {
-    class FrontDoorControl
+
+    /// <summary>
+    /// Constructor
+    /// </summary>
+    class DoorControl
     {
+        // Logger
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        private int _doorControlNotifyPort;
-        private int _doorControlRestAPIPort;
+        // Callback into Main Window when door status has changed - used to pop-up window
+        public delegate void DoorStatusRefreshCallback();
+        private DoorStatusRefreshCallback _doorStatusRefreshCallback;
+
+        // Device info for door
+        DeviceInfo _deviceInfo;
+
+        // MQTT client
+        private IManagedMqttClient _mqttClient;
+
+#if USE_HTTP_REST_API || USE_UDP_REST_API
+        private string _doorIPAddress;
+#endif
 
         // This is the format received from the door controller
         public class JsonDoorStatus
@@ -70,8 +91,11 @@ namespace RdWebCamSysTrayApp
             {
                 try
                 {
-                    _doorInfoFromJson = JsonConvert.DeserializeObject<JsonDoorStatus>(jsonStr);
-                    UpdateInternal();
+                    if (jsonStr.Contains("d0l"))
+                    {
+                        _doorInfoFromJson = JsonConvert.DeserializeObject<JsonDoorStatus>(jsonStr);
+                        UpdateInternal();
+                    }
                 }
                 catch (Exception excp)
                 {
@@ -80,20 +104,20 @@ namespace RdWebCamSysTrayApp
             }
         }
 
-        // IP Address of door controller and door status
-        private string _doorIPAddress;
+        // Door status
         private DoorStatus _doorStatus = new DoorStatus();
 
         // Number and PIN of door user
         private int _doorUserNumber;
         private string _doorUserPin;
 
+#if USE_HTTP_REST_API || USE_UDP_REST_API
         // Timer for re-requesting notifications - in case door controller restarts
         private Timer _doorStatusTimer;
         private int _doorStatusRequestNotifyCount = 0;
         private const int _doorStatusRequestResetTo = 1;
         private const int _doorStatusRequestResetAfter = 100;
-
+#endif
 
 #if LISTEN_FOR_TCP_DOOR_STATUS
         // TCP Listener for door status and thread signal.
@@ -103,29 +127,61 @@ namespace RdWebCamSysTrayApp
         private UdpClient _udpClientForDoorStatus;
 #endif
 
-        // Callback into Main Window when door status has changed - used to pop-up window
-        public delegate void DoorStatusRefreshCallback();
-        private DoorStatusRefreshCallback _doorStatusRefreshCallback;
-
         // Front Doot Control Constructor
-        public FrontDoorControl(DeviceInfo devInfo, DoorStatusRefreshCallback doorStatusRefreshCallback)
+        public DoorControl(DeviceInfo devInfo, DoorStatusRefreshCallback doorStatusRefreshCallback)
         {
-            _doorIPAddress = ConfigFileInfo.getIPAddressForName(devInfo.hostname);
-            _doorControlNotifyPort = devInfo.notifyPort;
-            _doorControlRestAPIPort = devInfo.port;
-            _doorUserNumber = devInfo.userNum;
-            _doorUserPin = devInfo.userPin;
+            // Device info
+            _deviceInfo = devInfo;
             _doorStatusRefreshCallback = doorStatusRefreshCallback;
 
+            // Cache useful info
+#if USE_HTTP_REST_API || USE_UDP_REST_API
+            _doorIPAddress = ConfigFileInfo.getIPAddressForName(_deviceInfo.hostname);
+#endif
+            _doorUserNumber = devInfo.userNum;
+            _doorUserPin = devInfo.userPin;
+
+#if USE_MANAGED_MQTT
+            String clientName = Environment.MachineName + "_" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
+            var options = new ManagedMqttClientOptionsBuilder()
+                .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
+                .WithClientOptions(new MqttClientOptionsBuilder()
+                    .WithClientId(clientName)
+                    .WithTcpServer(_deviceInfo.mqttServer, _deviceInfo.mqttPort)
+                    .Build())
+                .Build();
+            _mqttClient = new MqttFactory().CreateManagedMqttClient();
+            var topic = new TopicFilterBuilder().WithTopic(_deviceInfo.mqttOutTopic).Build();
+            _mqttClient.SubscribeAsync(topic);
+            _mqttClient.StartAsync(options);
+
+            _mqttClient.ApplicationMessageReceived += (s, e) =>
+            {
+                Console.WriteLine("### RECEIVED APPLICATION MESSAGE ###");
+                Console.WriteLine($"+ Topic = {e.ApplicationMessage.Topic}");
+                Console.WriteLine($"+ Payload = {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)}");
+                Console.WriteLine($"+ QoS = {e.ApplicationMessage.QualityOfServiceLevel}");
+                Console.WriteLine($"+ Retain = {e.ApplicationMessage.Retain}");
+                Console.WriteLine();
+            };
+#endif
+
+#if USE_HTTP_REST_API || USE_UDP_REST_API
             // Timer to update status
             _doorStatusTimer = new Timer(1000);
             _doorStatusTimer.Elapsed += new ElapsedEventHandler(OnDoorStatusTimer);
 
             // TCP listener for door status
             DoorStatusListenerStart();
+#endif
         }
 
-        // Method to make call on door controller - currently using web server on door controller
+        /// <summary>
+        /// CallDoorApiFunction
+        /// </summary>
+        /// <param name="functionAndArgs"></param>
+        /// Method to make call on door controller using whatever connection method is current
+        /// 
         private void CallDoorApiFunction(String functionAndArgs)
         {
 #if USE_PARTICLE_API
@@ -152,15 +208,37 @@ namespace RdWebCamSysTrayApp
             }
 #endif
 #if USE_HTTP_REST_API
-            string uriStr = "http://" + _doorIPAddress + "/" + functionAndArgs;
-            Uri uri = new Uri(uriStr);
+            try
+            {
+                string uriStr = "http://" + _doorIPAddress + "/" + functionAndArgs;
+                Uri uri = new Uri(uriStr, UriKind.Absolute);
 
-            // Using WebClient as can't get HttpClient to not block
-            WebClient requester = new WebClient();
-            requester.OpenReadCompleted += new OpenReadCompletedEventHandler(DoorApiFnCompleted);
-            requester.OpenReadAsync(uri);
+                // Using WebClient as can't get HttpClient to not block
+                logger.Info("FrontDoorControl::CallDoorApiFunction " + uriStr);
 
-            logger.Info("FrontDoorControl::CallDoorApiFunction " + uriStr);
+                using (WebClient client = new WebClient())
+                {
+
+                    client.DownloadStringCompleted += (sender, e) =>
+                    {
+                        if (e.Error != null)
+                        {
+                            logger.Error("FrontDoorControl:Error in http response {0}", e.Error.ToString());
+                        }
+                        else
+                        {
+                            DoorApiFnCompleted(e.Result);
+                            Console.WriteLine(e.Result);
+                        }
+                    };
+
+                    client.DownloadStringAsync(uri);
+                }
+            }
+            catch (Exception e)
+            {
+                logger.Error("FrontDoorControl::CallDoorApiFunction exception {0}", e.Message);
+            }
 #endif
 #if USE_UDP_REST_API
             try
@@ -177,43 +255,53 @@ namespace RdWebCamSysTrayApp
                 logger.Error("FrontDoorControl::CallDoorApiFunction exception {0}", excp.Message);
             }
 #endif
+
+            //TODO
         }
 
-        private void DoorApiFnCompleted(object sender, OpenReadCompletedEventArgs e)
+        /// <summary>
+        /// DoorApiFnCompleted
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
+        private void DoorApiFnCompleted(string rsltStr)
         {
-            if (e.Error == null)
-            {
-                logger.Info("FrontDoorControl::DoorApiCall ok");
-            }
-            else
-            {
-                logger.Info("FrontDoorControl::DoorApiCall error {0}", e.Error.ToString());
-            }
+            logger.Info("DoorControl::DoorApiCall ok {0}", rsltStr);
+            _doorStatus.UpdateFromJson(rsltStr);
+            _doorStatusRefreshCallback();
         }
 
+        /// <summary>
+        /// Start the process of generating periodic status updates - for polled connections
+        /// </summary>
         public void StartUpdates()
         {
+#if USE_HTTP_REST_API || USE_UDP_REST_API
             _doorStatusTimer.Start();
+#endif
         }
 
+        /// <summary>
+        /// Unlock main door
+        /// </summary>
         public void UnlockMainDoor()
         {
-            ControlDoor("U/0/" + _doorUserNumber.ToString() + "/" + _doorUserPin);
+            ControlDoor("u/0/" + _doorUserNumber.ToString() + "/" + _doorUserPin);
         }
 
         public void LockMainDoor()
         {
-            ControlDoor("L/0");
+            ControlDoor("l/0");
         }
 
         public void UnlockInnerDoor()
         {
-            ControlDoor("U/1/" + _doorUserNumber.ToString() + "/" + _doorUserPin);
+            ControlDoor("u/1/" + _doorUserNumber.ToString() + "/" + _doorUserPin);
         }
 
         public void LockInnerDoor()
         {
-            ControlDoor("L/1");
+            ControlDoor("l/1");
         }
 
         public bool IsDoorbellPressed()
@@ -229,7 +317,7 @@ namespace RdWebCamSysTrayApp
             }
             catch (HttpRequestException excp)
             {
-                logger.Error("FrontDoorControl::ControlDoor exception {0}", excp.Message);
+                logger.Error("DoorControl::ControlDoor exception {0}", excp.Message);
             }
         }
 
@@ -289,6 +377,11 @@ namespace RdWebCamSysTrayApp
 
         private void OnDoorStatusTimer(object source, ElapsedEventArgs e)
         {
+#if POLL_FOR_TCP_DOOR_STATUS
+            CallDoorApiFunction("q");
+#endif
+
+#if LISTEN_FOR_TCP_DOOR_STATUS || LISTEN_FOR_UDP_DOOR_STATUS || USE_PARTICLE_API
             try
             {
                 if (_doorStatusRequestNotifyCount == 0)
@@ -333,6 +426,7 @@ namespace RdWebCamSysTrayApp
             _doorStatusRequestNotifyCount++;
             if (_doorStatusRequestNotifyCount > _doorStatusRequestResetAfter)
                 _doorStatusRequestNotifyCount = 0;
+#endif
         }
 
         public bool GetDoorStatus(out DoorStatus doorStatus)

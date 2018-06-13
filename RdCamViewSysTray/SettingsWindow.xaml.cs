@@ -14,7 +14,7 @@ using System.Windows.Media.Imaging;
 using System.Windows.Shapes;
 using NLog;
 
-namespace RdWebCamSysTrayApp
+namespace HomeControlPanel
 {
     public class ComboBoxItemString
     {

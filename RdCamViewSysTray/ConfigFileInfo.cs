@@ -24,6 +24,10 @@ public class DeviceInfo
     public int userNum;
     public string userPin;
     public int motionDetectAutoShow;
+    public string mqttServer;
+    public int mqttPort;
+    public string mqttInTopic;
+    public string mqttOutTopic;
 }
 
 public delegate void MainConfigAcquiredCallback();
@@ -88,7 +92,7 @@ public class ConfigFileInfo
     public void AcquireConfig()
     {
 
-        string configSource = RdWebCamSysTrayApp.Properties.Settings.Default.ConfigSource;
+        string configSource = HomeControlPanel.Properties.Settings.Default.ConfigSource;
         try
         {
             Uri uri = new Uri("http://" + configSource + ":5076/mainconfig");

@@ -1,8 +1,8 @@
-﻿<Controls:MetroWindow x:Class="RdWebCamSysTrayApp.SettingsWindow"
+﻿<Controls:MetroWindow x:Class="HomeControlPanel.SettingsWindow"
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:RdWebCamSysTrayApp.Properties"
+        xmlns:local="clr-namespace:HomeControlPanel.Properties"
         Title="SettingsWindow" Height="170.893" Width="522">
     <Window.Resources>
         <ResourceDictionary>

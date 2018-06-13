@@ -7,7 +7,7 @@ using NLog;
 using System.Net.Http;
 using System.Net;
 
-namespace RdWebCamSysTrayApp
+namespace HomeControlPanel
 {
     class LedMatrix
     {

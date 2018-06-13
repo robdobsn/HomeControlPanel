@@ -10,7 +10,7 @@ using System.IO;
 using Newtonsoft.Json.Linq;
 using Newtonsoft.Json;
 
-namespace RdWebCamSysTrayApp
+namespace HomeControlPanel
 {
     class DomoticzControl
     {

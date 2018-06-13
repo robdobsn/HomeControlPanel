@@ -14,5 +14,8 @@
     <Setting Name="MicVol" Type="System.Double" Scope="User">
       <Value Profile="(Default)">0.5</Value>
     </Setting>
+    <Setting Name="ConfigSource" Type="System.String" Scope="User">
+      <Value Profile="(Default)">domoticzoff</Value>
+    </Setting>
   </Settings>
 </SettingsFile>
