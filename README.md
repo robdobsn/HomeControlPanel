@@ -1,4 +1,4 @@
-RdCamViewSysTray
+HomeControlPanel
 ================
 
-SysTray app for Windows 7 displaying security cameras and front-door speaker-phone controls.
+SysTray app for Windows displaying security cameras and front-door speaker-phone controls.
