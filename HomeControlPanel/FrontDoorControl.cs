@@ -214,7 +214,7 @@ namespace HomeControlPanel
                 Uri uri = new Uri(uriStr, UriKind.Absolute);
 
                 // Using WebClient as can't get HttpClient to not block
-                logger.Info("FrontDoorControl::CallDoorApiFunction " + uriStr);
+                //logger.Info("FrontDoorControl::CallDoorApiFunction " + uriStr);
 
                 using (WebClient client = new WebClient())
                 {
