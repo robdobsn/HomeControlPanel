@@ -179,13 +179,13 @@ namespace HomeControlPanel
             // Create the video decoders for each video window
             devInfo = _configFileInfo.GetDevice("frontDoorCamera");
             if (devInfo != null)
-                _videoStreamDisplays.add(video1, 0, new Uri(devInfo.videoURL));
+                _videoStreamDisplays.add(video1, devInfo.rotation, new Uri(devInfo.videoURL), devInfo.username, devInfo.password);
             devInfo = _configFileInfo.GetDevice("garageCamera");
             if (devInfo != null)
-                _videoStreamDisplays.add(video2, 0, new Uri(devInfo.videoURL));
+                _videoStreamDisplays.add(video2, devInfo.rotation, new Uri(devInfo.videoURL), devInfo.username, devInfo.password);
             devInfo = _configFileInfo.GetDevice("catCamera");
             if (devInfo != null)
-                _videoStreamDisplays.add(video3, 0, new Uri(devInfo.videoURL));
+                _videoStreamDisplays.add(video3, devInfo.rotation, new Uri(devInfo.videoURL), devInfo.username, devInfo.password);
 
             // Volume control
             _localAudioDevices = new AudioDevices();

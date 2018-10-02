@@ -28,6 +28,18 @@ public class DeviceInfo
     public int mqttPort;
     public string mqttInTopic;
     public string mqttOutTopic;
+    public int rotation;
+
+    DeviceInfo()
+    {
+        port = 0;
+        notifyPort = 0;
+        imageGrabPoll = 0;
+        userNum = 0;
+        motionDetectAutoShow = 0;
+        mqttPort = 0;
+        rotation = 0;
+    }
 }
 
 public delegate void MainConfigAcquiredCallback();

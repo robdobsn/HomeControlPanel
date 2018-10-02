@@ -12,18 +12,26 @@ namespace HomeControlPanel
         private System.Windows.Controls.Image _dispImage;
         private int _rotationAngle = 0;
         private Uri _streamUri;
+        private String _username;
+        private String _password;
 
-        public VideoStreamDisplay(System.Windows.Controls.Image img, int rotationAngle, Uri streamUri)
+        public VideoStreamDisplay(System.Windows.Controls.Image img, int rotationAngle, 
+                    Uri streamUri, String username="", String password="")
         {
             _dispImage = img;
             _rotationAngle = rotationAngle;
             _streamUri = streamUri;
             _decoder.FrameReady += handleFrameFn;
+            _username = username;
+            _password = password;
         }
 
         public void start()
         {
-            _decoder.ParseStream(_streamUri);
+            if (_username != "")
+                _decoder.ParseStream(_streamUri, _username, _password);
+            else
+                _decoder.ParseStream(_streamUri);
         }
 
         public void stop(bool unsubscribeEvents = false)
@@ -66,9 +74,11 @@ namespace HomeControlPanel
     {
         private List<VideoStreamDisplay> _displays = new List<VideoStreamDisplay>();
 
-        public void add(System.Windows.Controls.Image img, int rotationAngle, Uri streamUri)
+        public void add(System.Windows.Controls.Image img, int rotationAngle, Uri streamUri,
+                        String username, String password)
         {
-            VideoStreamDisplay display = new VideoStreamDisplay(img, rotationAngle, streamUri);
+            VideoStreamDisplay display = new VideoStreamDisplay(img, rotationAngle, streamUri,
+                        username, password);
             _displays.Add(display);
         }
 
