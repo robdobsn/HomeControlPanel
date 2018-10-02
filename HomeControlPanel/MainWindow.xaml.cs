@@ -204,7 +204,8 @@ namespace HomeControlPanel
 #if (LISTEN_TO_CAMERA)
             devInfo = _configFileInfo.GetDevice("frontDoorCamera");
             if (devInfo != null)
-                _listenToAxisCamera = new ListenToAxisCamera(ConfigFileInfo.getIPAddressForName(devInfo.hostname), _localAudioDevices);
+                _listenToAxisCamera = new ListenToAxisCamera(ConfigFileInfo.getIPAddressForName(devInfo.hostname), 
+                            _localAudioDevices, devInfo.username, devInfo.password);
 #endif
             // Start Video
             StartVideo();

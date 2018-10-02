@@ -73,11 +73,16 @@ namespace HomeControlPanel
         private System.Timers.Timer _timerForListeningForAFixedTime;
         private System.Timers.Timer _timeOutForStoppingListening;
         private static Logger logger = LogManager.GetCurrentClassLogger();
+        private String _username;
+        private String _password;
 
-        public ListenToAxisCamera(string ipAddress, AudioDevices audioDevices)
+        public ListenToAxisCamera(string ipAddress, AudioDevices audioDevices,
+                        String username, String password)
         {
             _ipAddress = ipAddress;
             _audioDevices = audioDevices;
+            _username = username;
+            _password = password;
         }
 
         public bool IsListening()
@@ -140,6 +145,8 @@ namespace HomeControlPanel
                 HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(string.Format("http://" + _ipAddress + "/axis-cgi/audio/receive.cgi?httptype=singlepart", getVars));
                 webReq.Method = "GET";
                 webReq.AllowReadStreamBuffering = false;
+                String svcCredentials = Convert.ToBase64String(ASCIIEncoding.ASCII.GetBytes(_username + ":" + _password));
+                webReq.Headers.Add("Authorization", "Basic " + svcCredentials);
                 webReq.BeginGetResponse(new AsyncCallback(GetAudioAsync), webReq);
             }
             catch (Exception excp)
