@@ -1,7 +1,7 @@
 ﻿//#define USE_PARTICLE_API
-#define USE_HTTP_REST_API
+//#define USE_HTTP_REST_API
 //#define USE_UDP_REST_API
-//#define USE_MANAGED_MQTT
+#define USE_MANAGED_MQTT
 //#define LISTEN_FOR_UDP_DOOR_STATUS
 //#define LISTEN_FOR_TCP_DOOR_STATUS
 #define POLL_FOR_TCP_DOOR_STATUS
@@ -157,6 +157,11 @@ namespace HomeControlPanel
 
             _mqttClient.ApplicationMessageReceived += (s, e) =>
             {
+                // Handle message received
+                _doorStatus.UpdateFromJson(Encoding.UTF8.GetString(e.ApplicationMessage.Payload));
+                _doorStatusRefreshCallback();
+
+                // Debug
                 Console.WriteLine("### RECEIVED APPLICATION MESSAGE ###");
                 Console.WriteLine($"+ Topic = {e.ApplicationMessage.Topic}");
                 Console.WriteLine($"+ Payload = {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)}");
@@ -254,9 +259,26 @@ namespace HomeControlPanel
             {
                 logger.Error("FrontDoorControl::CallDoorApiFunction exception {0}", excp.Message);
             }
+
 #endif
 
-            //TODO
+#if USE_MANAGED_MQTT
+            try
+            {
+                var message = new MqttApplicationMessageBuilder()
+                    .WithTopic(_deviceInfo.mqttInTopic)
+                    .WithPayload(functionAndArgs)
+                    .WithAtLeastOnceQoS()
+                    .WithRetainFlag()
+                    .Build();
+
+                _mqttClient.PublishAsync(message);
+            }
+            catch (Exception e)
+            {
+                logger.Error("FrontDoorControl::CallDoorApiFunction MQTT exception {0}", e.Message);
+            }
+#endif
         }
 
         /// <summary>
@@ -311,14 +333,7 @@ namespace HomeControlPanel
 
         private void ControlDoor(string doorCommand)
         {
-            try
-            {
                 CallDoorApiFunction(doorCommand);
-            }
-            catch (HttpRequestException excp)
-            {
-                logger.Error("DoorControl::ControlDoor exception {0}", excp.Message);
-            }
         }
 
         public static IPAddress GetDefaultGateway()
