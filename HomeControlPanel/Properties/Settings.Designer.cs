@@ -73,7 +73,7 @@ namespace HomeControlPanel.Properties {
         
         [global::System.Configuration.UserScopedSettingAttribute()]
         [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
-        [global::System.Configuration.DefaultSettingValueAttribute("domoticzoff")]
+        [global::System.Configuration.DefaultSettingValueAttribute("192.168.86.235")]
         public string ConfigSource {
             get {
                 return ((string)(this["ConfigSource"]));

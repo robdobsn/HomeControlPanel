@@ -1,5 +1,5 @@
 ﻿<?xml version='1.0' encoding='utf-8'?>
-<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="RdWebCamSysTrayApp.Properties" GeneratedClassName="Settings">
+<SettingsFile xmlns="http://schemas.microsoft.com/VisualStudio/2004/01/settings" CurrentProfile="(Default)" GeneratedClassNamespace="HomeControlPanel.Properties" GeneratedClassName="Settings">
   <Profiles />
   <Settings>
     <Setting Name="Speakers" Type="System.String" Scope="User">
@@ -15,7 +15,7 @@
       <Value Profile="(Default)">0.5</Value>
     </Setting>
     <Setting Name="ConfigSource" Type="System.String" Scope="User">
-      <Value Profile="(Default)">domoticzoff</Value>
+      <Value Profile="(Default)">192.168.86.235</Value>
     </Setting>
   </Settings>
 </SettingsFile>
