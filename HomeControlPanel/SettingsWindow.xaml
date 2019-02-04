@@ -1,22 +1,24 @@
-﻿<Controls:MetroWindow x:Class="HomeControlPanel.SettingsWindow"
+﻿<Controls:MetroWindow
         xmlns:Controls="clr-namespace:MahApps.Metro.Controls;assembly=MahApps.Metro"
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
-        xmlns:local="clr-namespace:HomeControlPanel.Properties"
-        Title="SettingsWindow" Height="170.893" Width="522">
-    <Window.Resources>
+        xmlns:Properties="clr-namespace:HomeControlPanel.Properties" x:Class="HomeControlPanel.SettingsWindow"
+        Title="SettingsWindow" Height="171" Width="522">
+    <Controls:MetroWindow.Resources>
         <ResourceDictionary>
-            <local:Settings x:Key="settings" />
             <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Colours.xaml" />
+                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Colors.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/Blue.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseLight.xaml" />
             </ResourceDictionary.MergedDictionaries>
         </ResourceDictionary>
-    </Window.Resources>
-    <Grid DataContext="{StaticResource settings}">
+    </Controls:MetroWindow.Resources>
+    <Grid>
+        <Grid.DataContext>
+            <Properties:Settings/>
+        </Grid.DataContext>
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto" />
             <RowDefinition Height="Auto" MinHeight="39" />
@@ -41,6 +43,5 @@
         <TextBox x:Name="txtConfigSource" Grid.Column="1" HorizontalAlignment="Left" Height="24" Margin="0,34,-291,0" Grid.Row="1" Grid.RowSpan="2" TextWrapping="Wrap" VerticalAlignment="Top" Width="343"
                   Text="192.168.86.235" />
         <TextBlock HorizontalAlignment="Left" Height="51" Margin="10,35,0,-17" Grid.Row="1" Grid.RowSpan="2" TextWrapping="Wrap" VerticalAlignment="Top" Width="140"><Run Text="Config Source Hostname or"/><Run Text=" IP address (e.g. domoticzoff or 192.168.86.235)"/></TextBlock>
-
     </Grid>
 </Controls:MetroWindow>
