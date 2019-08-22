@@ -160,7 +160,15 @@ namespace HomeControlPanel
             HttpWebRequest request = (HttpWebRequest)res.AsyncState;
             if (request == null)
                 return;
-            HttpWebResponse response = (HttpWebResponse)request.EndGetResponse(res);
+            HttpWebResponse response = null;
+            try
+            {
+                response = (HttpWebResponse)request.EndGetResponse(res);
+            }
+            catch (Exception excp)
+            {
+                logger.Error("Exception in ListenToAxisCamera::GetAudioAsync {0}", excp.Message);
+            }
             if (response == null)
                 return;
 

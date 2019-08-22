@@ -459,20 +459,26 @@ namespace HomeControlPanel
             if (folder.Trim().Length == 0)
                 return null;
             // Find images in folder sorted by age
-            DirectoryInfo info = new DirectoryInfo(folder);
-            FileInfo[] files = info.GetFiles("*.jpg").OrderBy(p => p.CreationTime).ToArray();
-            if (files.Length > 0)
+            try
             {
-                if (imageAgeZeroNewest >= files.Length)
-                    imageAgeZeroNewest = files.Length - 1;
-                int fileIdx = files.Length - 1 - imageAgeZeroNewest;
-                try
+                DirectoryInfo info = new DirectoryInfo(folder);
+                FileInfo[] files = info.GetFiles("*.jpg").OrderBy(p => p.CreationTime).ToArray();
+                if (files.Length > 0)
                 {
-                    return new BitmapImage(new Uri(Path.Combine(folder, files[fileIdx].Name)));
+                    if (imageAgeZeroNewest >= files.Length)
+                        imageAgeZeroNewest = files.Length - 1;
+                    int fileIdx = files.Length - 1 - imageAgeZeroNewest;
+                    try
+                    {
+                        return new BitmapImage(new Uri(Path.Combine(folder, files[fileIdx].Name)));
+                    }
+                    finally
+                    {
+                    }
                 }
-                finally
-                {
-                }
+            }
+            finally
+            {
             }
             return null;
         }

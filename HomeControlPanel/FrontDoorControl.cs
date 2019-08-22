@@ -268,8 +268,7 @@ namespace HomeControlPanel
                 var message = new MqttApplicationMessageBuilder()
                     .WithTopic(_deviceInfo.mqttInTopic)
                     .WithPayload(functionAndArgs)
-                    .WithAtLeastOnceQoS()
-                    .WithRetainFlag()
+                    .WithExactlyOnceQoS()
                     .Build();
 
                 _mqttClient.PublishAsync(message);
