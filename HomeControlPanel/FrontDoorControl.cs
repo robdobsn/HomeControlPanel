@@ -52,23 +52,23 @@ namespace HomeControlPanel
         // This is the format received from the door controller
         public class JsonDoorStatus
         {
-            public string d0l = "";
-            public string d0o = "";
-            public string d0ms = "";
-            public string d1l = "";
-            public string d1o = "";
-            public string d1ms = "";
-            public string b = "";
+            public string name = "";
+            public string locked = "";
+            public string open = "";
+            public string lockMs = "";
+        }
+        public class JsonStatus
+        {
+            public IList<JsonDoorStatus> doors;
+            public string bell = "";
         }
 
         // Status of the door controller
         public class DoorStatus
         {
-            public JsonDoorStatus _doorInfoFromJson;
-
-            public bool _mainLocked = false;
-            public bool _mainOpen = false;
-            public bool _innerLocked = false;
+            public JsonStatus _statusInfoFromJson;
+            public string [] _doorLockStrs = { "locked", "locked" };
+            public string [] _doorOpenStrs = { "closed", "closed" };
             public bool _bellPressed = false;
             public DateTime _lastDoorStatusTime = DateTime.MinValue;
             public string _tagId = "";
@@ -81,19 +81,24 @@ namespace HomeControlPanel
             private void UpdateInternal()
             {
                 _lastDoorStatusTime = DateTime.Now;
-                _mainLocked = (_doorInfoFromJson.d0l == "Y") ? true : false;
-                _mainOpen = (_doorInfoFromJson.d0o == "Y") ? true : false;
-                _innerLocked = (_doorInfoFromJson.d1l == "Y") ? true : false;
-                _bellPressed = (_doorInfoFromJson.b == "Y") ? true : false;
+                for (int doorIdx = 0; doorIdx < _statusInfoFromJson.doors.Count(); doorIdx++)
+                {
+                    if (doorIdx >= _doorLockStrs.Length)
+                        continue;
+                    JsonDoorStatus doorStatus = _statusInfoFromJson.doors[doorIdx];
+                    _doorLockStrs[doorIdx] = (doorStatus.locked == "Y" ? "locked" : (doorStatus.locked == "N" ? "unlocked" : "moving"));
+                    _doorOpenStrs[doorIdx] = (doorStatus.open == "Y" ? "open" : (doorStatus.open == "N" ? "closed" : "unknown"));
+                }
+                _bellPressed = (_statusInfoFromJson.bell == "Y") ? true : false;
             }
 
             public void UpdateFromJson(string jsonStr)
             {
                 try
                 {
-                    if (jsonStr.Contains("d0l"))
+                    if (jsonStr.Contains("bell"))
                     {
-                        _doorInfoFromJson = JsonConvert.DeserializeObject<JsonDoorStatus>(jsonStr);
+                        _statusInfoFromJson = JsonConvert.DeserializeObject<JsonStatus>(jsonStr);
                         UpdateInternal();
                     }
                 }
@@ -162,12 +167,7 @@ namespace HomeControlPanel
                 _doorStatusRefreshCallback();
 
                 // Debug
-                Console.WriteLine("### RECEIVED APPLICATION MESSAGE ###");
-                Console.WriteLine($"+ Topic = {e.ApplicationMessage.Topic}");
-                Console.WriteLine($"+ Payload = {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)}");
-                Console.WriteLine($"+ QoS = {e.ApplicationMessage.QualityOfServiceLevel}");
-                Console.WriteLine($"+ Retain = {e.ApplicationMessage.Retain}");
-                Console.WriteLine();
+                Console.WriteLine($"{e.ApplicationMessage.Topic} {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)} QoS = {e.ApplicationMessage.QualityOfServiceLevel} Retain = {e.ApplicationMessage.Retain}");
             };
 #endif
 

@@ -47,6 +47,10 @@ namespace HomeControlPanel
         private DoorControl _frontDoorControl;
         private DateTime? _doorStatusRefreshTime = null;
 
+        // Garage control
+        private DoorControl _garageDoorControl;
+        private DateTime? _garageStatusRefreshTime = null;
+
         // Cat deterrent
         private CatDeterrent _catDeterrent;
 
@@ -79,6 +83,8 @@ namespace HomeControlPanel
         // Images and icons
         private EasyButtonImage doorLockedImages;
         private EasyButtonImage doorClosedImages;
+        private EasyButtonImage garageClosedImages;
+        private EasyButtonImage garageUnknownImages;
         private EasyButtonImage doorBellImages;
         private System.Windows.Forms.NotifyIcon _notifyIcon;
 
@@ -128,6 +134,8 @@ namespace HomeControlPanel
             // Door status images
             doorLockedImages = new EasyButtonImage(@"res/locked-large.png", @"res/unlocked-large.png");
             doorClosedImages = new EasyButtonImage(@"res/doorclosed-large.png", @"res/dooropen-large.png");
+            garageClosedImages = new EasyButtonImage(@"res/garageclosed-large.png", @"res/garageopen-large.png");
+            garageUnknownImages = new EasyButtonImage(@"res/garageunknown-large.png", @"res/garageopen-large.png");
             doorBellImages = new EasyButtonImage(@"res/doorbell-large-sq.png", @"res/doorbell-large.png");
 
             // Start update timer for status
@@ -155,7 +163,15 @@ namespace HomeControlPanel
             // Front door
             devInfo = _configFileInfo.GetDevice("frontDoorLock");
             if (devInfo != null)
+            {
+                devInfo.hostname = "192.168.86.150";
                 _frontDoorControl = new DoorControl(devInfo, DoorStatusRefresh);
+            }
+
+            // Garage door
+            devInfo = _configFileInfo.GetDevice("garageDoorLock");
+            if (devInfo != null)
+                _garageDoorControl = new DoorControl(devInfo, GarageStatusRefresh);
 
             // Office blinds
             devInfo = _configFileInfo.GetDevice("officeBlinds");
@@ -360,6 +376,31 @@ namespace HomeControlPanel
             }
         }
 
+        private void GarageStatusRefresh()
+        {
+            _garageStatusRefreshTime = DateTime.Now;
+
+            // Update the door status using a delegate as it is UI update
+            this.Dispatcher.BeginInvoke(
+                (Action)delegate ()
+                {
+                    ShowDoorStatus();
+                }
+                );
+            // Check if popup window and start listing to audio from camera
+            if (_frontDoorControl.IsDoorbellPressed())
+            {
+                System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
+                    (System.Windows.Forms.MethodInvoker)delegate ()
+                    {
+                        ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
+#if (LISTEN_TO_CAMERA)
+                        _listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
+#endif
+                    });
+            }
+        }
+
         private void CameraMotionDetectFn()
         {
             // This is here to soak up camera motion events which currently do nothing - used to AutoShowWindowFn
@@ -487,18 +528,27 @@ namespace HomeControlPanel
         {
             DoorControl.DoorStatus doorStatus;
             _frontDoorControl.GetDoorStatus(out doorStatus);
-            if (doorStatus._mainLocked)
+            if (doorStatus._doorLockStrs[0] == "locked")
                 mainDoorLockState.Source = doorLockedImages.Img1();
             else
                 mainDoorLockState.Source = doorLockedImages.Img2();
-            if (doorStatus._innerLocked)
+            if (doorStatus._doorLockStrs[1] == "locked")
                 innerDoorLockState.Source = doorLockedImages.Img1();
             else
                 innerDoorLockState.Source = doorLockedImages.Img2();
-            if (!doorStatus._mainOpen)
+            if (doorStatus._doorOpenStrs[0] == "closed")
                 mainDoorOpenState.Source = doorClosedImages.Img1();
             else
                 mainDoorOpenState.Source = doorClosedImages.Img2();
+            DoorControl.DoorStatus garageStatus;
+            _garageDoorControl.GetDoorStatus(out garageStatus);
+            if (garageStatus._doorOpenStrs[0] == "closed")
+                garageDoorOpenState.Source = garageClosedImages.Img1();
+            else if (garageStatus._doorOpenStrs[0] == "open")
+                garageDoorOpenState.Source = garageClosedImages.Img2();
+            else
+                garageDoorOpenState.Source = garageUnknownImages.Img1();
+
             if (doorStatus._bellPressed)
                 doorBellState.Source = doorBellImages.Img1();
             else
@@ -517,17 +567,31 @@ namespace HomeControlPanel
                 }
             }
 
-            // Show time since last status update
+            // Show time since last door status update
             if (_doorStatusRefreshTime == null)
             {
-                DoorStatusTextBox.Text = "No Updates";
+                DoorStatusTextBox.Text = "Door no info";
             }
             else
             {
                 TimeSpan? ts = DateTime.Now - _doorStatusRefreshTime;
                 if (ts != null)
                 {
-                    DoorStatusTextBox.Text = "Info is " + Math.Round(ts.Value.TotalSeconds).ToString() + "s old";
+                    DoorStatusTextBox.Text = "Door info " + Math.Round(ts.Value.TotalSeconds).ToString() + "s old";
+                }
+            }
+
+            // Show time since last garage status update
+            if (_garageStatusRefreshTime == null)
+            {
+                GarageStatusTextBox.Text = "Garage no info";
+            }
+            else
+            {
+                TimeSpan? ts = DateTime.Now - _garageStatusRefreshTime;
+                if (ts != null)
+                {
+                    GarageStatusTextBox.Text = "Garage info " + Math.Round(ts.Value.TotalSeconds).ToString() + "s old";
                 }
             }
 
@@ -766,6 +830,11 @@ namespace HomeControlPanel
             switchImageDisplay(true);
             _curImageAgeToDisplay++;
             showImages();
+        }
+
+        private void Toggle_Garage_Click(object sender, RoutedEventArgs e)
+        {
+
         }
     }
 }

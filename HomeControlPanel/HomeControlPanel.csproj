@@ -28,7 +28,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <InstallUrl>\\macallan\main\RobDev\Deploy\HomeControlPanel\</InstallUrl>
-    <ApplicationRevision>84</ApplicationRevision>
+    <ApplicationRevision>86</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -190,6 +190,11 @@
       <DependentUpon>Settings.settings</DependentUpon>
       <DesignTimeSharedInput>True</DesignTimeSharedInput>
     </Compile>
+    <Resource Include="res\doorclosed-large.png" />
+    <Resource Include="res\dooropen-large.png" />
+    <Resource Include="res\garageopen-large.png" />
+    <Resource Include="res\garageunknown-large.png" />
+    <Resource Include="res\garageclosed-large.png" />
     <None Include="NLog.xsd">
       <SubType>Designer</SubType>
     </None>
@@ -251,8 +256,6 @@
     <Resource Include="res\dooropen.png" />
   </ItemGroup>
   <ItemGroup>
-    <Resource Include="res\doorclosed-large.png" />
-    <Resource Include="res\dooropen-large.png" />
     <Resource Include="res\locked-large.png" />
     <Resource Include="res\unlocked-large.png" />
   </ItemGroup>
