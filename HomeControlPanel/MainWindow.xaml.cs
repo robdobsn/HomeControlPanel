@@ -63,6 +63,9 @@ namespace HomeControlPanel
         // Domoticz units
         private DomoticzControl _domoticzControl;
 
+        // RobHomeServer
+        private HomeScenes _homeScenes;
+
         // LED Matrix message board
         private LedMatrix _ledMatrix;
 
@@ -91,6 +94,11 @@ namespace HomeControlPanel
         // Image display
         private int _curImageAgeToDisplay = 0;
         private string _lastFrontDoorImageName = "";
+
+        // Delay before starting streaming
+        private bool configAcquiredOk = false;
+        private int ticksSinceConfigAcquired = 0;
+        private bool dataAcqStarted = false;
 
         public MainWindow()
         {
@@ -184,6 +192,9 @@ namespace HomeControlPanel
             List<string> domoticzIPAddresses = _configFileInfo.GetIPAddrByType("domoticz");
             _domoticzControl = new DomoticzControl(domoticzIPAddresses);
 
+            // HomeScenes
+            _homeScenes = new HomeScenes(ref _configFileInfo);
+
             // LedMatrix
             devInfo = _configFileInfo.GetDevice("frontDoorLock");
             if (devInfo != null)
@@ -233,7 +244,8 @@ namespace HomeControlPanel
         private void AcquireConfigOk()
         {
             logger.Info("Got config ok");
-            StartDataAcquisition();
+            configAcquiredOk = true;
+            ticksSinceConfigAcquired = 0;
         }
 
         private void AcquireConfigFailed()
@@ -557,6 +569,17 @@ namespace HomeControlPanel
 
         private void dtimer_Tick(object sender, EventArgs e)
         {
+            // Check for start acquisition
+            if (!dataAcqStarted && configAcquiredOk)
+            {
+                if (ticksSinceConfigAcquired > 2)
+                {
+                    dataAcqStarted = true;
+                    StartDataAcquisition();
+                }
+                ticksSinceConfigAcquired++;
+            }
+
             // Check for auto-hide required
             if (_autoHideRequiredSecs > 0)
             {
@@ -726,12 +749,16 @@ namespace HomeControlPanel
         {
             if (_domoticzControl != null)
                 _domoticzControl.SendGroupCommand("Office - Mood");
+            if (_homeScenes != null)
+                _homeScenes.SendGroupCommand("Office - Mood");
         }
 
         private void OfficeLightsOffButton_Click(object sender, RoutedEventArgs e)
         {
             if (_domoticzControl != null)
                 _domoticzControl.SendGroupCommand("Office - Off");
+            if (_homeScenes != null)
+                _homeScenes.SendGroupCommand("Office - Off");
         }
         private void TextMatrixSendButton_Click(object sender, RoutedEventArgs e)
         {

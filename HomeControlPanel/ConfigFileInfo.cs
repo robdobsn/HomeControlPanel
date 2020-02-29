@@ -42,6 +42,16 @@ public class DeviceInfo
     }
 }
 
+public class HomeScene
+{
+    public string room;
+    public string nom;
+    public string uniqueName;
+    public string type;
+    public string icon;
+    public List<string> urls;
+}
+
 public delegate void MainConfigAcquiredCallback();
 
 // Data contained in the config file
@@ -57,6 +67,13 @@ public class ConfigFileInfo
     }
 
     public ConfigInfo _configInfo = new ConfigInfo();
+
+    public class SceneInfo
+    {
+        public List<HomeScene> scenes = new List<HomeScene>();
+    }
+
+    public SceneInfo _scenes = new SceneInfo();
 
     public void SetCallbacks(MainConfigAcquiredCallback acquireOkCallback, MainConfigAcquiredCallback acquireFailedCallback)
     {
@@ -120,7 +137,25 @@ public class ConfigFileInfo
         }
         catch (Exception excp)
         {
-            logger.Error("DomoticzControl::SendGroupCommand {0} exception {1}", configSource, excp.Message);
+            logger.Error("ConfigFileInfo AcquireConfig from {0} exception {1}", configSource, excp.Message);
+        }
+
+        try
+        {
+            Uri uri = new Uri("http://" + configSource + ":5076/scenes");
+
+            // Using WebClient as can't get HttpClient to not block
+            WebClient requester = new WebClient();
+            requester.OpenReadAsync(uri);
+            requester.OpenReadCompleted += new OpenReadCompletedEventHandler(OpenScenesCallback);
+        }
+        catch (HttpRequestException excp)
+        {
+            logger.Error("ConfigFileInfo AcquireScenes from {0} exception {1}", configSource, excp.Message);
+        }
+        catch (Exception excp)
+        {
+            logger.Error("ConfigFileInfo AcquireScenes from {0} exception {1}", configSource, excp.Message);
         }
 
         //    try
@@ -169,7 +204,7 @@ public class ConfigFileInfo
             //Console.WriteLine(s.ReadToEnd());
             string jsonStr = s.ReadToEnd();
             _configInfo = JsonConvert.DeserializeObject<ConfigInfo>(jsonStr);
-            logger.Info("Read configuration from DomoticzOFF");
+            logger.Info("Read configuration from server");
             _acquireOkCallback();
         }
         catch (Exception excp)
@@ -188,6 +223,45 @@ public class ConfigFileInfo
                 reply.Close();
             }
         }
+    }
+
+    private void OpenScenesCallback(Object sender, OpenReadCompletedEventArgs e)
+    {
+        Stream reply = null;
+        StreamReader s = null;
+
+        try
+        {
+            reply = (Stream)e.Result;
+            s = new StreamReader(reply);
+            // Convert from JSON
+            //Console.WriteLine(s.ReadToEnd());
+            string jsonStr = s.ReadToEnd();
+            _scenes = JsonConvert.DeserializeObject<SceneInfo>(jsonStr);
+            logger.Info("Read scenes from server");
+            _acquireOkCallback();
+        }
+        catch (Exception excp)
+        {
+            logger.Info("ConfigFileInfo: Exception getting config {0}", excp.Message);
+        }
+        finally
+        {
+            if (s != null)
+            {
+                s.Close();
+            }
+
+            if (reply != null)
+            {
+                reply.Close();
+            }
+        }
+    }
+
+    public List<HomeScene> getScenes()
+    {
+        return _scenes.scenes;
     }
 
 }
