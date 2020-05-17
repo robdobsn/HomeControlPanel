@@ -21,8 +21,9 @@ using System.Net.Sockets;
 using System.Text.RegularExpressions;
 using System.Net.NetworkInformation;
 using MQTTnet;
-using MQTTnet.ManagedClient;
 using MQTTnet.Client;
+using MQTTnet.Extensions.ManagedClient;
+using MQTTnet.Client.Options;
 
 namespace HomeControlPanel
 {
@@ -160,7 +161,7 @@ namespace HomeControlPanel
             _mqttClient.SubscribeAsync(topic);
             _mqttClient.StartAsync(options);
 
-            _mqttClient.ApplicationMessageReceived += (s, e) =>
+            _mqttClient.UseApplicationMessageReceivedHandler(e =>
             {
                 // Handle message received
                 _doorStatus.UpdateFromJson(Encoding.UTF8.GetString(e.ApplicationMessage.Payload));
@@ -168,7 +169,7 @@ namespace HomeControlPanel
 
                 // Debug
                 Console.WriteLine($"{e.ApplicationMessage.Topic} {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)} QoS = {e.ApplicationMessage.QualityOfServiceLevel} Retain = {e.ApplicationMessage.Retain}");
-            };
+            });
 #endif
 
 #if USE_HTTP_REST_API || USE_UDP_REST_API
