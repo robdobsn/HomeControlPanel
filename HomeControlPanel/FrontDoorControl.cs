@@ -157,7 +157,7 @@ namespace HomeControlPanel
                     .Build())
                 .Build();
             _mqttClient = new MqttFactory().CreateManagedMqttClient();
-            var topic = new TopicFilterBuilder().WithTopic(_deviceInfo.mqttOutTopic).Build();
+            var topic = new MqttTopicFilterBuilder().WithTopic(_deviceInfo.mqttOutTopic).Build();
             _mqttClient.SubscribeAsync(topic);
             _mqttClient.StartAsync(options);
 

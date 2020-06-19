@@ -172,7 +172,6 @@ namespace HomeControlPanel
             devInfo = _configFileInfo.GetDevice("frontDoorLock");
             if (devInfo != null)
             {
-                devInfo.hostname = "192.168.86.150";
                 _frontDoorControl = new DoorControl(devInfo, DoorStatusRefresh);
             }
 
@@ -572,7 +571,7 @@ namespace HomeControlPanel
             // Check for start acquisition
             if (!dataAcqStarted && configAcquiredOk)
             {
-                if (ticksSinceConfigAcquired > 2)
+                if (ticksSinceConfigAcquired > 1)
                 {
                     dataAcqStarted = true;
                     StartDataAcquisition();

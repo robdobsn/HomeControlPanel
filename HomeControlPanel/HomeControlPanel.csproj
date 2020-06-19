@@ -30,7 +30,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <InstallUrl>\\macallan\main\RobDev\Deploy\HomeControlPanel\</InstallUrl>
-    <ApplicationRevision>90</ApplicationRevision>
+    <ApplicationRevision>91</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -113,9 +113,6 @@
     </Reference>
     <Reference Include="NLog, Version=4.0.0.0, Culture=neutral, PublicKeyToken=5120e14c03d0593c, processorArchitecture=MSIL">
       <HintPath>..\packages\NLog.4.7.1\lib\net45\NLog.dll</HintPath>
-    </Reference>
-    <Reference Include="RtspClientSharp, Version=1.3.3.0, Culture=neutral, PublicKeyToken=af963665c791e92e, processorArchitecture=MSIL">
-      <HintPath>..\packages\RtspClientSharp.1.3.3\lib\netstandard2.0\RtspClientSharp.dll</HintPath>
     </Reference>
     <Reference Include="System" />
     <Reference Include="System.ComponentModel.Composition" />
