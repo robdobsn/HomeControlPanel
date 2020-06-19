@@ -5,13 +5,6 @@
         Title="Home Control" Height="961.5" Width="980" Closed="Window_Closed" Icon="res/door48x48.ico" Loaded="Home_Control_SysTrayApp_Loaded">
     <Window.Resources>
         <ResourceDictionary>
-            <ResourceDictionary.MergedDictionaries>
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Colors.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/Blue.xaml" />
-                <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Accents/BaseLight.xaml" />
-            </ResourceDictionary.MergedDictionaries>
             <ContextMenu x:Key ="SysTrayRightMenu"  StaysOpen="true">
                 <MenuItem Header="Exit..." Click="ExitApp"/>
                 <MenuItem Header="Rename"/>
