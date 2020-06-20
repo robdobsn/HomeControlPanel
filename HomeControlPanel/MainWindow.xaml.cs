@@ -37,15 +37,6 @@ namespace HomeControlPanel
         // Show still images instead of video
         private bool _stillImagesDisplayed = false;
 
-        //        // Settings
-        //        bool listenToCameraOnShow = false;
-        //#if (TALK_TO_CAMERA)
-        //        private TalkToAxisCamera _talkToAxisCamera;
-        //#endif
-        //#if (LISTEN_TO_CAMERA)
-        //        private ListenToAxisCamera _listenToAxisCamera;
-        //#endif
-
         //        // Door control
         //        private DoorControl _frontDoorControl;
         //        private DateTime? _doorStatusRefreshTime = null;
@@ -364,33 +355,33 @@ namespace HomeControlPanel
 
         private void ShowDoorStatus()
         {
-            //DoorControl.DoorStatus doorStatus;
-            //_frontDoorControl.GetDoorStatus(out doorStatus);
-            //if (doorStatus._doorLockStrs[0] == "locked")
-            //    mainDoorLockState.Source = doorLockedImages.Img1();
-            //else
-            //    mainDoorLockState.Source = doorLockedImages.Img2();
-            //if (doorStatus._doorLockStrs[1] == "locked")
-            //    innerDoorLockState.Source = doorLockedImages.Img1();
-            //else
-            //    innerDoorLockState.Source = doorLockedImages.Img2();
-            //if (doorStatus._doorOpenStrs[0] == "closed")
-            //    mainDoorOpenState.Source = doorClosedImages.Img1();
-            //else
-            //    mainDoorOpenState.Source = doorClosedImages.Img2();
-            //DoorControl.DoorStatus garageStatus;
-            //_garageDoorControl.GetDoorStatus(out garageStatus);
-            //if (garageStatus._doorOpenStrs[0] == "closed")
-            //    garageDoorOpenState.Source = garageClosedImages.Img1();
-            //else if (garageStatus._doorOpenStrs[0] == "open")
-            //    garageDoorOpenState.Source = garageClosedImages.Img2();
-            //else
-            //    garageDoorOpenState.Source = garageUnknownImages.Img1();
+            // Front door
+            if (_deviceManager.getVal("frontDoorLock", 0, "locked") != 0)
+                mainDoorLockState.Source = doorLockedImages.Img1();
+            else
+                mainDoorLockState.Source = doorLockedImages.Img2();
+            if (_deviceManager.getVal("frontDoorLock", 1, "locked") != 0)
+                innerDoorLockState.Source = doorLockedImages.Img1();
+            else
+                innerDoorLockState.Source = doorLockedImages.Img2();
+            if (_deviceManager.getVal("frontDoorLock", 0, "closed") != 0)
+                mainDoorOpenState.Source = doorClosedImages.Img1();
+            else
+                mainDoorOpenState.Source = doorClosedImages.Img2();
 
-            //if (doorStatus._bellPressed)
-            //    doorBellState.Source = doorBellImages.Img1();
-            //else
-            //    doorBellState.Source = null;
+            // Garage
+            if (_deviceManager.getVal("garageDoorLock", 0, "locked") != 0)
+                garageDoorOpenState.Source = garageClosedImages.Img1();
+            else if (_deviceManager.getVal("garageDoorLock", 0, "open") != 0)
+                garageDoorOpenState.Source = garageClosedImages.Img2();
+            else
+                garageDoorOpenState.Source = garageUnknownImages.Img1();
+
+            // Bell
+            if (_deviceManager.getVal("frontDoorLock", 0, "bell") != 0)
+                doorBellState.Source = doorBellImages.Img1();
+            else
+                doorBellState.Source = null;
         }
 
         private void dtimer_Tick(object sender, EventArgs e)

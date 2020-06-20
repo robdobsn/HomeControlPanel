@@ -27,10 +27,7 @@ using System.Security.Policy;
 
 namespace HomeControlPanel
 {
-
-    /// <summary>
     /// Constructor
-    /// </summary>
     class DoorControl : DeviceBase
     {
         // Logger
@@ -168,7 +165,7 @@ namespace HomeControlPanel
                 _doorEventCallback(this);
 
                 // Debug
-                Console.WriteLine($"{e.ApplicationMessage.Topic} {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)} QoS = {e.ApplicationMessage.QualityOfServiceLevel} Retain = {e.ApplicationMessage.Retain}");
+                logger.Info($"{e.ApplicationMessage.Topic} {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)} QoS = {e.ApplicationMessage.QualityOfServiceLevel} Retain = {e.ApplicationMessage.Retain}");
             });
 #endif
 
@@ -292,6 +289,12 @@ namespace HomeControlPanel
         {
             if (idx == 0 && valType == "bell")
                 return _doorStatus._bellPressed ? 1 : 0;
+            else if (valType == "locked")
+                return _doorStatus._doorLockStrs[idx] == "locked" ? 1 : 0;
+            else if (valType == "closed")
+                return _doorStatus._doorOpenStrs[idx] == "closed" ? 1 : 0;
+            else if (valType == "open")
+                return _doorStatus._doorOpenStrs[idx] == "open" ? 1 : 0;
             return 0;
         }
 
