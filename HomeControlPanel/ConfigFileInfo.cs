@@ -10,7 +10,7 @@ using System.Threading.Tasks;
 // Info on a device in the config file
 public class DeviceInfo
 {
-
+    public string name;
     public string description;
     public string deviceType;
     public string hostname;
@@ -75,11 +75,6 @@ public class ConfigFileInfo
 
     public SceneInfo _scenes = new SceneInfo();
 
-    public void SetCallbacks(MainConfigAcquiredCallback acquireOkCallback, MainConfigAcquiredCallback acquireFailedCallback)
-    {
-        _acquireOkCallback = acquireOkCallback;
-        _acquireFailedCallback = acquireFailedCallback;
-    }
     public static string getIPAddressForName(string hname)
     {
         IPAddress[] ips;
@@ -102,6 +97,10 @@ public class ConfigFileInfo
             return null;
         return _configInfo.devices[deviceName];
     }
+    public Dictionary<string, DeviceInfo> GetDevices()
+    {
+        return _configInfo.devices;
+    }
 
     public List<string> GetIPAddrByType(string deviceType)
     {
@@ -118,8 +117,10 @@ public class ConfigFileInfo
         return deviceList;
     }
 
-    public void AcquireConfig()
+    public void AcquireConfig(MainConfigAcquiredCallback acquireOkCallback, MainConfigAcquiredCallback acquireFailedCallback)
     {
+        _acquireOkCallback = acquireOkCallback;
+        _acquireFailedCallback = acquireFailedCallback;
 
         string configSource = HomeControlPanel.Properties.Settings.Default.ConfigSource;
         try
@@ -133,62 +134,14 @@ public class ConfigFileInfo
         }
         catch (HttpRequestException excp)
         {
+            _acquireFailedCallback();
             logger.Error("ConfigFileInfo AcquireConfig from {0} exception {1}", configSource, excp.Message);
         }
         catch (Exception excp)
         {
+            _acquireFailedCallback();
             logger.Error("ConfigFileInfo AcquireConfig from {0} exception {1}", configSource, excp.Message);
         }
-
-        try
-        {
-            Uri uri = new Uri("http://" + configSource + ":5076/scenes");
-
-            // Using WebClient as can't get HttpClient to not block
-            WebClient requester = new WebClient();
-            requester.OpenReadAsync(uri);
-            requester.OpenReadCompleted += new OpenReadCompletedEventHandler(OpenScenesCallback);
-        }
-        catch (HttpRequestException excp)
-        {
-            logger.Error("ConfigFileInfo AcquireScenes from {0} exception {1}", configSource, excp.Message);
-        }
-        catch (Exception excp)
-        {
-            logger.Error("ConfigFileInfo AcquireScenes from {0} exception {1}", configSource, excp.Message);
-        }
-
-        //    try
-        //    {
-        //        using (StreamReader sr = new StreamReader("//domoticzoff/PiShare/nodeuser/config/MasterDevices.json"))
-        //        {
-        //            string jsonData = sr.ReadToEnd();
-        //            _configInfo = JsonConvert.DeserializeObject<ConfigInfo>(jsonData);
-        //            logger.Info("Read configuration from DomoticzOFF");
-        //            _acquireOkCallback();
-        //        }
-        //    }
-        //    catch (Exception excp)
-        //    {
-        //        try
-        //        {
-        //            using (StreamReader sr = new StreamReader("//macallan/Admin/Config/MasterDevices.json"))
-        //            {
-        //                string jsonData = sr.ReadToEnd();
-        //                _configInfo = JsonConvert.DeserializeObject<ConfigInfo>(jsonData);
-        //                logger.Info("Read configuration from Macallan");
-        //                _acquireOkCallback();
-        //            }
-        //        }
-        //        catch (Exception excp2)
-        //        {
-        //            logger.Info("Failed to read configuration from DomoticzOFF or Macallan " + excp.Message + " and " + excp2.Message);
-
-        //        }
-        //    }
-        //    _acquireFailedCallback();
-        //}
-
     }
 
     private void OpenConfigSourceCallback(Object sender, OpenReadCompletedEventArgs e)
@@ -205,11 +158,34 @@ public class ConfigFileInfo
             string jsonStr = s.ReadToEnd();
             _configInfo = JsonConvert.DeserializeObject<ConfigInfo>(jsonStr);
             logger.Info("Read configuration from server");
-            _acquireOkCallback();
+
+            // Get scenes
+            string configSource = HomeControlPanel.Properties.Settings.Default.ConfigSource;
+            try
+            {
+                Uri uri = new Uri("http://" + configSource + ":5076/scenes");
+
+                // Using WebClient as can't get HttpClient to not block
+                WebClient requester = new WebClient();
+                requester.OpenReadAsync(uri);
+                requester.OpenReadCompleted += new OpenReadCompletedEventHandler(OpenScenesCallback);
+            }
+            catch (HttpRequestException excp)
+            {
+                _acquireFailedCallback();
+                logger.Error("ConfigFileInfo AcquireScenes from {0} exception {1}", configSource, excp.Message);
+            }
+            catch (Exception excp)
+            {
+                _acquireFailedCallback();
+                logger.Error("ConfigFileInfo AcquireScenes from {0} exception {1}", configSource, excp.Message);
+            }
+
         }
         catch (Exception excp)
         {
             logger.Info("ConfigFileInfo: Exception getting config {0}", excp.Message);
+            _acquireFailedCallback();
         }
         finally
         {
@@ -243,6 +219,7 @@ public class ConfigFileInfo
         }
         catch (Exception excp)
         {
+            _acquireFailedCallback();
             logger.Info("ConfigFileInfo: Exception getting config {0}", excp.Message);
         }
         finally

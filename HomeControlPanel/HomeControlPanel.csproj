@@ -30,7 +30,7 @@
     <UpdateRequired>false</UpdateRequired>
     <MapFileExtensions>true</MapFileExtensions>
     <InstallUrl>\\macallan\main\RobDev\Deploy\HomeControlPanel\</InstallUrl>
-    <ApplicationRevision>91</ApplicationRevision>
+    <ApplicationRevision>92</ApplicationRevision>
     <ApplicationVersion>1.0.0.%2a</ApplicationVersion>
     <UseApplicationTrust>false</UseApplicationTrust>
     <PublishWizardCompleted>true</PublishWizardCompleted>
@@ -198,10 +198,13 @@
     <Compile Include="BlindsControl.cs" />
     <Compile Include="CameraMotion.cs" />
     <Compile Include="CatDeterrent.cs" />
+    <Compile Include="DeviceBase.cs" />
+    <Compile Include="DeviceManager.cs" />
+    <Compile Include="SimpleMJPEGDecoder.cs" />
     <Compile Include="ConfigFileInfo.cs" />
     <Compile Include="DomoticzControl.cs" />
     <Compile Include="EasyButtonImage.cs" />
-    <Compile Include="FrontDoorControl.cs" />
+    <Compile Include="DoorControl.cs" />
     <Compile Include="ImageBuffer.cs" />
     <Compile Include="LedMatrix.cs" />
     <Compile Include="ListenToAxisCamera.cs" />

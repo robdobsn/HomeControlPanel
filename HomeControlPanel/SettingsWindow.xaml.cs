@@ -50,20 +50,20 @@ namespace HomeControlPanel
 
         private void OkButton_Click(object sender, RoutedEventArgs e)
         {
-            logger.Info("SettingsWindow::OkButton_Clicked speakerscombo.selvalue {0}", SpeakersCombo.SelectedValue);
+            //logger.Info("SettingsWindow::OkButton_Clicked speakerscombo.selvalue {0}", SpeakersCombo.SelectedValue);
 
-            //_audioDevices.SetWaveOutDeviceByName((string)SpeakersCombo.SelectedValue);
-            //_audioDevices.SetWaveInDeviceByName((string)MicrophoneCombo.SelectedValue);
+            ////_audioDevices.SetWaveOutDeviceByName((string)SpeakersCombo.SelectedValue);
+            ////_audioDevices.SetWaveInDeviceByName((string)MicrophoneCombo.SelectedValue);
 
-            Properties.Settings.Default.Save();
+            //Properties.Settings.Default.Save();
 
-            _configFileInfo.AcquireConfig();
+            //_configFileInfo.AcquireConfig();
 
-            if (_audioDevices != null)
-            {
-                _audioDevices.SetupAudioDevicesFromConfig();
-            }
-            this.Close();
+            //if (_audioDevices != null)
+            //{
+            //    _audioDevices.SetupAudioDevicesFromConfig();
+            //}
+            //this.Close();
         }
     }
 }

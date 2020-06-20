@@ -13,16 +13,26 @@ using System.Net.Sockets;
 
 namespace HomeControlPanel
 {
-    class BlindsControl
+    class BlindsControl : DeviceBase
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private string _ipAddress;
         private int __blindsControlRestAPIPort;
 
-        public BlindsControl(DeviceInfo devInfo)
+        public BlindsControl(ConfigFileInfo configFileInfo, DeviceInfo devInfo)
         {
             _ipAddress = ConfigFileInfo.getIPAddressForName(devInfo.hostname);
             __blindsControlRestAPIPort = devInfo.port;
+        }
+
+        public void Control(int idx, string cmd)
+        {
+            ControlBlind(idx, cmd);
+        }
+
+        public int getVal(int idx, string valType)
+        {
+            return 0;
         }
 
         public void ControlBlind(int blindNumber, string direction)

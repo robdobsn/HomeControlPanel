@@ -1,5 +1,4 @@
-﻿//#define USE_PARTICLE_API
-//#define USE_HTTP_REST_API
+﻿//#define USE_HTTP_REST_API
 //#define USE_UDP_REST_API
 #define USE_MANAGED_MQTT
 //#define LISTEN_FOR_UDP_DOOR_STATUS
@@ -24,6 +23,7 @@ using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Extensions.ManagedClient;
 using MQTTnet.Client.Options;
+using System.Security.Policy;
 
 namespace HomeControlPanel
 {
@@ -31,14 +31,14 @@ namespace HomeControlPanel
     /// <summary>
     /// Constructor
     /// </summary>
-    class DoorControl
+    class DoorControl : DeviceBase
     {
         // Logger
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
         // Callback into Main Window when door status has changed - used to pop-up window
-        public delegate void DoorStatusRefreshCallback();
-        private DoorStatusRefreshCallback _doorStatusRefreshCallback;
+        public delegate void DoorEventCallback(DoorControl doorControl);
+        private DoorEventCallback _doorEventCallback;
 
         // Device info for door
         DeviceInfo _deviceInfo;
@@ -134,11 +134,11 @@ namespace HomeControlPanel
 #endif
 
         // Front Doot Control Constructor
-        public DoorControl(DeviceInfo devInfo, DoorStatusRefreshCallback doorStatusRefreshCallback)
+        public DoorControl(ConfigFileInfo configFileInfo, DeviceInfo devInfo, DoorEventCallback doorEventCallback)
         {
             // Device info
             _deviceInfo = devInfo;
-            _doorStatusRefreshCallback = doorStatusRefreshCallback;
+            _doorEventCallback = doorEventCallback;
 
             // Cache useful info
 #if USE_HTTP_REST_API || USE_UDP_REST_API
@@ -165,7 +165,7 @@ namespace HomeControlPanel
             {
                 // Handle message received
                 _doorStatus.UpdateFromJson(Encoding.UTF8.GetString(e.ApplicationMessage.Payload));
-                _doorStatusRefreshCallback();
+                _doorEventCallback(this);
 
                 // Debug
                 Console.WriteLine($"{e.ApplicationMessage.Topic} {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)} QoS = {e.ApplicationMessage.QualityOfServiceLevel} Retain = {e.ApplicationMessage.Retain}");
@@ -190,29 +190,6 @@ namespace HomeControlPanel
         /// 
         private void CallDoorApiFunction(String functionAndArgs)
         {
-#if USE_PARTICLE_API
-            // Perform action through Particle API
-            Uri uri = new Uri("https://api.particle.io/v1/devices/" + Properties.Settings.Default.FrontDoorParticleDeviceID + "/apiCall?access_token=" + Properties.Settings.Default.FrontDoorParticleAccessToken);
-
-            // Using WebClient as can't get HttpClient to not block
-            WebClient requester = new WebClient();
-            requester.Headers[HttpRequestHeader.ContentType] = "application/x-www-form-urlencoded";
-            requester.UploadStringCompleted += new UploadStringCompletedEventHandler(ParticleApiFnCompleted);
-            requester.UploadStringAsync(uri, "POST", "arg=" + functionAndArgs);
-            logger.Info("FrontDoorControl::DoorAPICall " + functionAndArgs);
-
-            private void ParticleApiFnCompleted(object sender, UploadStringCompletedEventArgs e)
-            {
-                if (e.Error == null)
-                {
-                    logger.Info("FrontDoorControl::DoorApiCall ok");
-                }
-                else
-                {
-                    logger.Info("FrontDoorControl::DoorApiCall error {0}", e.Error.ToString());
-                }
-            }
-#endif
 #if USE_HTTP_REST_API
             try
             {
@@ -290,7 +267,7 @@ namespace HomeControlPanel
         {
             logger.Info("DoorControl::DoorApiCall ok {0}", rsltStr);
             _doorStatus.UpdateFromJson(rsltStr);
-            _doorStatusRefreshCallback();
+            _doorEventCallback(this);
         }
 
         /// <summary>
@@ -303,32 +280,19 @@ namespace HomeControlPanel
 #endif
         }
 
-        /// <summary>
-        /// Unlock main door
-        /// </summary>
-        public void UnlockMainDoor()
+        public void Control(int idx, string cmd)
         {
-            ControlDoor("u/0/" + _doorUserNumber.ToString() + "/" + _doorUserPin);
+            if (cmd == "unlock")
+                ControlDoor("u/" + idx.ToString() + "/" + _doorUserNumber.ToString() + "/" + _doorUserPin);
+            else
+                ControlDoor("l/" + idx.ToString());
         }
 
-        public void LockMainDoor()
+        public int getVal(int idx, string valType)
         {
-            ControlDoor("l/0");
-        }
-
-        public void UnlockInnerDoor()
-        {
-            ControlDoor("u/1/" + _doorUserNumber.ToString() + "/" + _doorUserPin);
-        }
-
-        public void LockInnerDoor()
-        {
-            ControlDoor("l/1");
-        }
-
-        public bool IsDoorbellPressed()
-        {
-            return _doorStatus._bellPressed;
+            if (idx == 0 && valType == "bell")
+                return _doorStatus._bellPressed ? 1 : 0;
+            return 0;
         }
 
         private void ControlDoor(string doorCommand)
@@ -396,7 +360,7 @@ namespace HomeControlPanel
             CallDoorApiFunction("q");
 #endif
 
-#if LISTEN_FOR_TCP_DOOR_STATUS || LISTEN_FOR_UDP_DOOR_STATUS || USE_PARTICLE_API
+#if LISTEN_FOR_TCP_DOOR_STATUS || LISTEN_FOR_UDP_DOOR_STATUS
             try
             {
                 if (_doorStatusRequestNotifyCount == 0)
@@ -413,13 +377,6 @@ namespace HomeControlPanel
 #if REQUEST_STATUS_ON_TIMER
                     else if (_doorStatusRequestNotifyCount == 2)
                     {
-#if USE_PARTICLE_API
-                        Uri uri = new Uri("https://api.particle.io/v1/devices/" + Properties.Settings.Default.FrontDoorParticleDeviceID + "/status?access_token=" + Properties.Settings.Default.FrontDoorParticleAccessToken);
-
-                        HttpWebRequest webReq = (HttpWebRequest)WebRequest.Create(uri);
-                        webReq.Method = "GET";
-                        webReq.BeginGetResponse(new AsyncCallback(DoorStatusCallback), webReq);
-#else
                         string uriStr = "http://" + _doorIPAddress + "/q";
                         Uri uri = new Uri(uriStr);
 
@@ -429,7 +386,6 @@ namespace HomeControlPanel
                         requester.OpenReadAsync(uri);
 
                         logger.Info("FrontDoorControl::OnDoorStatusTimer " + uriStr);
-#endif
                     }
 #endif
             }

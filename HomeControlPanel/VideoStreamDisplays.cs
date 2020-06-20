@@ -7,6 +7,7 @@ using System.Runtime.Remoting.Channels;
 using System.Threading;
 using System.Windows.Media;
 using System.Windows.Media.Imaging;
+using System.Windows.Threading;
 
 namespace HomeControlPanel
 {
@@ -14,13 +15,15 @@ namespace HomeControlPanel
     {
         // Logger
         private static Logger logger = LogManager.GetCurrentClassLogger();
-        private MjpegDecoder _mjpegDecoder = null;
+        //private MjpegDecoder _mjpegDecoder = null;
+        private SimpleMJPEGDecoder _mjpegDecoder = null;
         private System.Windows.Controls.Image _dispImage;
         private int _rotationAngle = 0;
         private Uri _streamUri;
         private String _username;
         private String _password;
-        CancellationToken _rtspCancelToken;
+        private CancellationToken _mjpegCancelToken = new CancellationToken();
+        readonly SynchronizationContext sync = new SynchronizationContext();
 
         public VideoStreamDisplay(System.Windows.Controls.Image img, int rotationAngle,
                     Uri streamUri, String username = "", String password = "")
@@ -28,22 +31,25 @@ namespace HomeControlPanel
             _dispImage = img;
             _rotationAngle = rotationAngle;
             _streamUri = streamUri;
-            _mjpegDecoder = new MjpegDecoder();
-            _mjpegDecoder.FrameReady += handleMjpegFrameFn;
+            //_mjpegDecoder = new MjpegDecoder();
+            //_mjpegDecoder.FrameReady += handleMjpegFrameFn;
+            _mjpegDecoder = new SimpleMJPEGDecoder();
             _username = username;
             _password = password;
         }
 
-        public void start()
+        public async void start()
         {
             try
             {
                 if (_mjpegDecoder != null)
                 {
-                    if (_username != "")
-                        _mjpegDecoder.ParseStream(_streamUri, _username, _password);
-                    else
-                        _mjpegDecoder.ParseStream(_streamUri);
+                    var dispatcher = Dispatcher.CurrentDispatcher;
+                    await _mjpegDecoder.StartAsync(dispatcher, frameCallback, _streamUri.ToString(), _username, _password, _mjpegCancelToken);
+                    //if (_username != "")
+                    //    _mjpegDecoder.ParseStream(_streamUri, _username, _password);
+                    //else
+                    //    _mjpegDecoder.ParseStream(_streamUri);
                 }
             }
             catch (Exception excp)
@@ -54,11 +60,22 @@ namespace HomeControlPanel
 
         public void stop(bool unsubscribeEvents = false)
         {
-            _mjpegDecoder.StopStream();
-            if (unsubscribeEvents)
-            {
-                _mjpegDecoder.FrameReady -= handleMjpegFrameFn;
-            }
+            //_mjpegDecoder.StopStream();
+            //if (unsubscribeEvents)
+            //{
+            //    _mjpegDecoder.FrameReady -= handleMjpegFrameFn;
+            //}
+        }
+
+        private void frameCallback(BitmapImage img)
+        {
+            //BitmapImage img2 = new BitmapImage();
+            //// sync.Post(new SendOrPostCallback(_ => _dispImage.Source = img), null);
+            //img2.BeginInit();
+            //img2.UriSource = new Uri("https://images-na.ssl-images-amazon.com/images/I/41UNaS7XIHL._AC._SR240,240.jpg");
+            //img2.EndInit();
+            //_dispImage.Source = img2;
+            _dispImage.Source = img;
         }
 
         private void handleMjpegFrameFn(object sender, FrameReadyEventArgs e)

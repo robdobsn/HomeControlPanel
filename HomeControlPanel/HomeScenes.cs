@@ -12,14 +12,24 @@ using Newtonsoft.Json;
 
 namespace HomeControlPanel
 {
-    class HomeScenes
+    class HomeScenes : DeviceBase
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
         private ConfigFileInfo _configFileInfo;
 
-        public HomeScenes(ref ConfigFileInfo configFileInfo)
+        public HomeScenes(ref ConfigFileInfo configFileInfo, DeviceInfo deviceInfo)
         {
             _configFileInfo = configFileInfo;
+        }
+
+        public void Control(int idx, string cmd)
+        {
+            SendGroupCommand(cmd);
+        }
+
+        public int getVal(int idx, string valType)
+        {
+            return 0;
         }
 
         public void SendGroupCommand(string groupCommand)
