@@ -24,7 +24,7 @@
                 <ColumnDefinition Width="485" />
             </Grid.ColumnDefinitions>
             <Image x:Name="image1" Stretch="Fill" Margin="0,0,0,0" Grid.Column="0" Grid.RowSpan="2" Visibility="Hidden"/>
-            <ffme:MediaElement x:Name="Video1Area" Background="Black" IsDesignPreviewEnabled="True" LoadedBehavior="Play" UnloadedBehavior="Manual" RenderTransformOrigin="0.5,0.5" Stretch="Fill" Grid.Column="0" Grid.RowSpan="2" Margin="-93,93,395,95" Grid.ColumnSpan="2" IsMuted="True" >
+            <ffme:MediaElement x:Name="Video1Area" Background="White" IsDesignPreviewEnabled="True" LoadedBehavior="Play" UnloadedBehavior="Manual" RenderTransformOrigin="0.5,0.5" Stretch="Fill" Grid.Column="0" Grid.RowSpan="2" Margin="-93,93,395,95" Grid.ColumnSpan="2" IsMuted="True" >
                 <ffme:MediaElement.RenderTransform>
                     <TransformGroup>
                         <ScaleTransform/>
@@ -35,9 +35,9 @@
                 </ffme:MediaElement.RenderTransform>
             </ffme:MediaElement>
             <Image x:Name="image2" Stretch="Fill" Margin="0,0,0,0" Grid.Column="1"  Visibility="Hidden"/>
-            <Image x:Name="video2" Stretch="Fill" Margin="0,0,0,0" Grid.Column="1"/>
+            <ffme:MediaElement x:Name="Video2Area" Background="White" IsDesignPreviewEnabled="True" LoadedBehavior="Play" UnloadedBehavior="Manual" Stretch="Fill" Grid.Column="1" IsMuted="True" />
             <Image x:Name="image3" Stretch="Fill" Margin="0,0,0,0" Grid.Column="1" Grid.Row="1"  Visibility="Hidden"/>
-            <Image x:Name="video3" Stretch="Fill" Margin="0,0,0,0" Grid.Column="1" Grid.Row="1"/>
+            <ffme:MediaElement x:Name="Video3Area" Background="White" IsDesignPreviewEnabled="True" LoadedBehavior="Play" UnloadedBehavior="Manual" Stretch="Fill" Grid.Column="1" Grid.Row="1" IsMuted="True" />
             <Grid Margin="0,10,0,-42" Grid.Column="0" Grid.Row="2">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="30" />
@@ -58,15 +58,19 @@
                 </Grid.ColumnDefinitions>
                 <Button Content="Listen" Height="26" x:Name="ListenButton" Width="86" Click="StartListen_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="0" />
                 <Button Content="Mute" Height="26" x:Name="QuietButton" Width="86" Click="StopListen_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="1" Margin="0" />
-                <Button Content="Unlock Main" Height="26" x:Name="Unlock_Main" Tag="frontDoorLock_0_unlock" Width="86" Focusable="False" Click="ActionButtonClick" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0" Grid.Row="2" Grid.Column="0" />
-                <Button Content="Lock Main" Height="26" x:Name="Lock_Main" Tag="frontDoorLock_0_lock" Width="86" Click="ActionButtonClick" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0" Grid.Column="1" Grid.Row="2" />
-                <Button Content="Unlock Inner" Height="26" x:Name="Unlock_Inner" Tag="frontDoorLock_1_unlock" Width="86" Click="ActionButtonClick" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0" Grid.Column="0" Grid.Row="3" />
-                <Button Content="Lock Inner" Height="26" x:Name="Lock_Inner" Tag="frontDoorLock_1_lock" Width="86" Click="ActionButtonClick" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="1" Grid.Row="3" Margin="0" />
+                <Button Content="Unlock Main" Height="26" x:Name="Unlock_Main" Tag="frontDoorLock_0_unlock" Width="86" Focusable="False" Click="ActionButtonClick" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0" Grid.Row="1" Grid.Column="0" />
+                <Button Content="Lock Main" Height="26" x:Name="Lock_Main" Tag="frontDoorLock_0_lock" Width="86" Click="ActionButtonClick" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0" Grid.Column="1" Grid.Row="1" />
+                <Button Content="Unlock Inner" Height="26" x:Name="Unlock_Inner" Tag="frontDoorLock_1_unlock" Width="86" Click="ActionButtonClick" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0" Grid.Column="0" Grid.Row="2" />
+                <Button Content="Lock Inner" Height="26" x:Name="Lock_Inner" Tag="frontDoorLock_1_lock" Width="86" Click="ActionButtonClick" HorizontalAlignment="Left" VerticalAlignment="Top" Grid.Column="1" Grid.Row="2" Margin="0" />
+                <Image x:Name="mainDoorOpenState" Grid.Column="2" HorizontalAlignment="Left" Height="28" Margin="10,0,0,0" Grid.Row="1" VerticalAlignment="Top" Width="88" Source="res/doorclosed-large.png"/>
+                <Image x:Name="mainDoorLockState" Grid.Column="3" HorizontalAlignment="Left" Height="28" Margin="0,0,0,0" Grid.Row="1" VerticalAlignment="Top" Width="88" Source="res/locked-large.png"/>
+                <Image x:Name="innerDoorLockState" Grid.Column="3" HorizontalAlignment="Left" Height="28" Margin="0,0,0,0" Grid.Row="2" VerticalAlignment="Top" Width="88" Source="res/locked-large.png"/>
+                <Image x:Name="doorBellState" Grid.Column="4" HorizontalAlignment="Left" Height="28" Margin="0" Grid.Row="1" VerticalAlignment="Top" Width="88" />
+                <Button Content="Garage Toggle" Height="26" x:Name="Toggle_Garage" Width="177" Click="Toggle_Garage_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,2,0,0" Grid.Column="0" Grid.Row="3" Grid.ColumnSpan="2" />
+                <Image x:Name="garageDoorOpenState" Grid.Column="2" HorizontalAlignment="Left" Height="28" Margin="10,0,0,0" Grid.Row="3" VerticalAlignment="Top" Width="88" Source="res/doorclosed-large.png"/>
+                <TextBox x:Name="DoorStatusTextBox" Grid.ColumnSpan="1" Grid.Column="5" HorizontalAlignment="Left" Height="26" Grid.Row="1" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="90" BorderBrush="{x:Null}"/>
+                <TextBox x:Name="GarageStatusTextBox" Grid.ColumnSpan="1" Grid.Column="5" HorizontalAlignment="Left" Height="26" Grid.Row="3" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="90" BorderBrush="{x:Null}"/>
                 <Slider x:Name="outSlider" Margin="10,0,0,0" Grid.Column="2" RenderTransformOrigin="2.727,-0.981" ValueChanged="outSlider_ValueChanged" Grid.ColumnSpan="3" />
-                <Image x:Name="mainDoorLockState" Grid.Column="2" HorizontalAlignment="Left" Height="28" Margin="10,0,0,0" Grid.Row="2" VerticalAlignment="Top" Width="88" Source="res/locked-large.png"/>
-                <Image x:Name="mainDoorOpenState" Grid.Column="3" HorizontalAlignment="Left" Height="28" Margin="0" Grid.Row="2" VerticalAlignment="Top" Width="88" Source="res/doorclosed-large.png"/>
-                <Image x:Name="doorBellState" Grid.Column="4" HorizontalAlignment="Left" Height="28" Margin="0" Grid.Row="2" VerticalAlignment="Top" Width="88" />
-                <Image x:Name="innerDoorLockState" Grid.Column="2" HorizontalAlignment="Left" Height="28" Margin="10,0,0,0" Grid.Row="3" VerticalAlignment="Top" Width="88" Source="res/locked-large.png"/>
                 <Label Content="Rob's" HorizontalContentAlignment="Center" Grid.Row="4" VerticalAlignment="Center" Height="30" Width="95" FontSize="16"/>
                 <Label Content="Left" HorizontalContentAlignment="Center" Grid.Row="4" Grid.Column="1" VerticalAlignment="Center" Height="30" Width="95" FontSize="16"/>
                 <Label Content="Left-Mid" HorizontalContentAlignment="Center" Grid.Row="4" Grid.Column="2" VerticalAlignment="Center" Height="30" Width="95" FontSize="16"/>
@@ -87,8 +91,6 @@
                 <Button Content="Down" Height="26" x:Name="LeftMidDownButton" Tag="officeBlinds_2_down" Width="91" Click="ActionButtonClick" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="2" />
                 <Button Content="Down" Height="26" x:Name="RightMidDownButton" Tag="officeBlinds_3_down" Width="91" Click="ActionButtonClick" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="7" Grid.Column="3" />
                 <Button Content="Down" Height="26" x:Name="RightDownButton" Tag="officeBlinds_4_down" Width="82" Click="ActionButtonClick" HorizontalAlignment="Right" VerticalAlignment="Center" Grid.Row="7" Grid.Column="4" Margin="0,2,6,2" />
-                <Button Content="Garage Toggle" Height="26" x:Name="Toggle_Garage" Width="91" Click="Toggle_Garage_Click" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="2,2,0,0" Grid.Column="3" Grid.Row="3" />
-                <Image x:Name="garageDoorOpenState" Grid.Column="4" HorizontalAlignment="Left" Height="28" Margin="3,0,0,0" Grid.Row="3" VerticalAlignment="Top" Width="88" Source="res/doorclosed-large.png"/>
             </Grid>
             <Grid Height="Auto"  Margin="0,10,0,-42" Grid.Column="1" Grid.Row="2">
                 <Grid.RowDefinitions>
@@ -109,24 +111,22 @@
                     <ColumnDefinition Width="100"/>
                 </Grid.ColumnDefinitions>
                 <Button x:Name="SquirtButton" Height="118" HorizontalAlignment="Left" VerticalAlignment="Top" Width="351" BorderBrush="#FFCCCCCC" Grid.ColumnSpan="4" Margin="1,10,0,0" PreviewMouseUp="SquirtButton_MouseUp" PreviewMouseDown="SquirtButton_MouseDown" Grid.RowSpan="5">
-                    <Image Source="res/sprayimgwithcat.png" Height="108" Width="333"/>
+                    <Image Source="res/sprayimgwithcat.png" Height="108" Width="333" IsEnabled="False"/>
                 </Button>
                 <Button Content="Office Mood" Height="26" x:Name="OfficeLightsMoodButton" Tag="scenesBenbecula_0_Office - Mood" Width="80" Click="ActionButtonClick" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="5" Grid.Column="0" />
                 <Button Content="Office Off" Height="26" x:Name="OfficeLightsOffButton" Tag="scenesBenbecula_0_Office - Off" Width="80" Click="ActionButtonClick" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="5" Grid.Column="1" />
-                <TextBox x:Name="LEDMatrixText" Grid.ColumnSpan="2" HorizontalAlignment="Left" Height="26" Margin="2,2,0,0" Grid.Row="6" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="180"/>
-                <Button Content="Send Msg" Height="26" x:Name="TextMatrixSendButton" Width="82" Click="TextMatrixSendButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="2" />
-                <Button Content="Stop Alert" Height="26" x:Name="TextMatrixStopAlertButton" Width="84" Click="TextMatrixStopAlertButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="3" Margin="0,2,5,2" />
-                <Button Content="Clear" Height="26" x:Name="TextMatrixClearButton" Width="83" Click="TextMatrixClearButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="4" Margin="7,2,10,2" />
-                <Button Height="26" x:Name="Settings" Width="83" Click="Settings_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Grid.Row="7" Grid.Column="4" Grid.RowSpan="1" Margin="0,2,10,0">
+                <TextBox x:Name="LEDMatrixText" Grid.ColumnSpan="2" HorizontalAlignment="Left" Height="26" Margin="2,2,0,0" Grid.Row="6" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="180" IsEnabled="False"/>
+                <Button Content="Send Msg" Height="26" x:Name="TextMatrixSendButton" Width="82" Click="TextMatrixSendButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="2" IsEnabled="False" />
+                <Button Content="Stop Alert" Height="26" x:Name="TextMatrixStopAlertButton" Width="84" Click="TextMatrixStopAlertButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="3" Margin="0,2,5,2" IsEnabled="False" />
+                <Button Content="Clear" Height="26" x:Name="TextMatrixClearButton" Width="83" Click="TextMatrixClearButton_Click" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Row="6" Grid.Column="4" Margin="7,2,10,2" IsEnabled="False" />
+                <Button Height="26" x:Name="Settings" Width="83" Click="Settings_Click" HorizontalAlignment="Right" VerticalAlignment="Top" Grid.Row="7" Grid.Column="4" Grid.RowSpan="1" Margin="0,2,10,0" IsEnabled="False">
                     <Image Source="res/settings.png" RenderTransformOrigin="0.405,0.452"/>
                 </Button>
                 <Button Content="Video" Height="26" x:Name="BtnShowVideo" Width="83" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="4" Margin="7,5,10,0" Click="BtnShowVideo_Click" />
                 <Button Content="Image" Height="26" x:Name="BtnShowImage" Width="83" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="4" Margin="7,5,10,29" Grid.Row="1" Grid.RowSpan="2" Click="BtnShowImage_Click" />
                 <Button Content="Prev" Height="26" x:Name="BtnImagePrev" Width="83" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="4" Margin="7,4,10,0" Grid.Row="3" Click="BtnImagePrev_Click" />
                 <Button Content="Next" Height="26" x:Name="BtnImageNext" Width="83" HorizontalAlignment="Center" VerticalAlignment="Center" Grid.Column="4" Margin="7,4,10,0" Grid.Row="2" Click="BtnImageNext_Click" />
-                <TextBox x:Name="DoorStatusTextBox" Grid.ColumnSpan="2" Grid.Column="2" HorizontalAlignment="Left" Height="26" Margin="10,2,0,0" Grid.Row="5" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="138"/>
-                <TextBox x:Name="GarageStatusTextBox" Grid.ColumnSpan="2" Grid.Column="3" HorizontalAlignment="Left" Height="26" Margin="52,2,0,0" Grid.Row="5" TextWrapping="Wrap" Text="" VerticalAlignment="Top" Width="127" RenderTransformOrigin="0.5,0.5"/>
-                <TextBox x:Name="ProgramStatusBox" Text=""  HorizontalAlignment="Right" Margin="0,2,4,0" Grid.Row="7" VerticalAlignment="Top" Height="26" Width="378" Grid.ColumnSpan="4"/>
+                <TextBox x:Name="ProgramStatusBox" Text=""  HorizontalAlignment="Right" Margin="0,2,4,0" Grid.Row="7" VerticalAlignment="Top" Height="26" Width="378" Grid.ColumnSpan="4" IsEnabled="False"/>
             </Grid>
         </Grid>
     </StackPanel>

@@ -1,7 +1,4 @@
-﻿//#define LISTEN_TO_CAMERA
-//#define TALK_TO_CAMERA
-
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using MahApps.Metro.Controls;
@@ -15,6 +12,7 @@ using System.Windows.Media.Imaging;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Forms;
+using NLog.Fluent;
 
 namespace HomeControlPanel
 {
@@ -30,6 +28,11 @@ namespace HomeControlPanel
         private System.Windows.Forms.NotifyIcon _notifyIcon;
         private const int AUTO_HIDE_AFTER_MANUAL_SHOW_SECS = 120;
         private const int AUTO_HIDE_AFTER_AUTO_SHOW_SECS = 30;
+        private int _autoHideRequiredSecs = AUTO_HIDE_AFTER_AUTO_SHOW_SECS;
+
+        // UI Update timer
+        private const int UI_UPDATE_TIMER_PERIOD_SECS = 1;
+        private DispatcherTimer _uiUpdateTimer = new DispatcherTimer();
 
         // Device manager
         private DeviceManager _deviceManager = null;
@@ -37,50 +40,9 @@ namespace HomeControlPanel
         // Show still images instead of video
         private bool _stillImagesDisplayed = false;
 
-        //        // Door control
-        //        private DoorControl _frontDoorControl;
-        //        private DateTime? _doorStatusRefreshTime = null;
-
-        //        // Garage control
-        //        private DoorControl _garageDoorControl;
-        //        private DateTime? _garageStatusRefreshTime = null;
-
-        //        // Cat deterrent
-        //        private CatDeterrent _catDeterrent;
-
-        //        // Camera motion detect
-        //        private CameraMotion _cameraMotion;
-
-        //        // Blinds
-        //        private BlindsControl _officeBlindsControl;
-
-        //        // Domoticz units
-        //        private DomoticzControl _domoticzControl;
-
-        //        // RobHomeServer
-        //        private HomeScenes _homeScenes;
-
-        //        // LED Matrix message board
-        //        private LedMatrix _ledMatrix;
-
-        //        // Local audio devices - used for listening and talking to cameras
-        //        private AudioDevices _localAudioDevices;
-
-
-        //        // Audio listen and window auto display
-        //        private int _timeToListenAfterDoorbellRingInSecs = 300;
-        //        private int _autoHideRequiredSecs = 0;
-        //        private const int DOOR_STATUS_REFRESH_SECS = 2;
-        //        private DispatcherTimer _dTimer = new DispatcherTimer();
-
         //        // Image display
         //        private int _curImageAgeToDisplay = 0;
         //        private string _lastFrontDoorImageName = "";
-
-        //        // Delay before starting streaming
-        //        private bool configAcquiredOk = false;
-        //        private int ticksSinceConfigAcquired = 0;
-        //        private bool dataAcqStarted = false;
 
         public MainWindow()
         {
@@ -89,25 +51,8 @@ namespace HomeControlPanel
             // Create device manager
             _deviceManager = new DeviceManager(UIUpdateCallback);
 
-            // Log startup
-            //logger.Info("App Starting ...");
-
-            //ResizeMode = System.Windows.ResizeMode.CanResizeWithGrip;
-
-            //// Door status images
-            //doorLockedImages = new EasyButtonImage(@"res/locked-large.png", @"res/unlocked-large.png");
-            //doorClosedImages = new EasyButtonImage(@"res/doorclosed-large.png", @"res/dooropen-large.png");
-            //garageClosedImages = new EasyButtonImage(@"res/garageclosed-large.png", @"res/garageopen-large.png");
-            //garageUnknownImages = new EasyButtonImage(@"res/garageunknown-large.png", @"res/garageopen-large.png");
-            //doorBellImages = new EasyButtonImage(@"res/doorbell-large-sq.png", @"res/doorbell-large.png");
-
-            //// Start update timer for status
-            //_dTimer.Tick += new EventHandler(dtimer_Tick);
-            //_dTimer.Interval = new TimeSpan(0, 0, 1);
-            //_dTimer.Start();
-
-            // Log startup
-            //logger.Info("App Started");
+            // Resizer
+            ResizeMode = System.Windows.ResizeMode.CanResizeWithGrip;
         }
 
         // Window loaded
@@ -121,6 +66,9 @@ namespace HomeControlPanel
             {
                 logger.Info("Got config ok");
                 _deviceManager.Setup(_configFileInfo);
+
+                // Start Video
+                StartVideo();
             },
             () =>
             {
@@ -142,105 +90,106 @@ namespace HomeControlPanel
             Video1Area.Volume = 0.5;
             outSlider.Value = 50;
 
-            // Start Video
-            StartVideo();
+            // UI Update timer
+            _uiUpdateTimer.Tick += new EventHandler(UIUpdateTimerFn);
+            _uiUpdateTimer.Interval = new TimeSpan(0, 0, UI_UPDATE_TIMER_PERIOD_SECS);
+            _uiUpdateTimer.Start();
 
             // Log startup
             logger.Info("App loaded complete");
         }
 
 
-        private void StartDataAcquisition()
-        {
-            // Start Video
-            StartVideo();
-
-            //            // Start getting updates from front door
-            //            _frontDoorControl.StartUpdates();
-        }
-
         private void Window_Closed(object sender, EventArgs e)
         {
-            //_notifyIcon.Visible = false;
+            _notifyIcon.Visible = false;
         }
 
-        protected override async void OnClosing(CancelEventArgs e)
+        protected override void OnClosing(CancelEventArgs e)
         {
             logger.Info("Window closing");
-            await Video1Area.Close();
-            //base.OnClosing(e);
-            //e.Cancel = true;
-            //WindowState = WindowState.Minimized;
-            //Properties.Settings.Default.Save();
+            base.OnClosing(e);
+            e.Cancel = true;
+            WindowState = WindowState.Minimized;
         }
 
         protected override void OnStateChanged(EventArgs e)
         {
-            //if (WindowState == WindowState.Minimized)
-            //{
-            //    HidePopupWindow();
-            //}
+            if (WindowState == WindowState.Minimized)
+            {
+                HidePopupWindow();
+            }
 
-            //if (WindowState == WindowState.Maximized)
-            //    WindowState = WindowState.Normal;
+            if (WindowState == WindowState.Maximized)
+                WindowState = WindowState.Normal;
 
-            //base.OnStateChanged(e);
+            base.OnStateChanged(e);
         }
 
         public void BringWindowToFront()
         {
-            ////Win32Helper.ShowWindowNoActive(this);
-            //this.Show();
-            //this.WindowState = WindowState.Normal;
-            //this.Activate();
-            //this.Topmost = true;
-            //this.Topmost = false;
-            ////this.Focus();
+            //Win32Helper.ShowWindowNoActive(this);
+            this.Show();
+            this.WindowState = WindowState.Normal;
+            this.Activate();
+            this.Topmost = true;
+            this.Topmost = false;
+            //this.Focus();
         }
 
         public void ShowPopupWindow(int autoHideSecs)
         {
-//            _autoHideRequiredSecs = autoHideSecs;
-//            BringWindowToFront();
-//            StartVideo();
-//#if (LISTEN_TO_CAMERA)
-//            if (this.listenToCameraOnShow)
-//                _listenToAxisCamera.Start();
-//#endif
-//            logger.Info("Popup Shown");
+            _autoHideRequiredSecs = autoHideSecs;
+            BringWindowToFront();
+            //StartVideo();
+            logger.Info("Popup Shown");
         }
 
         public void HidePopupWindow()
         {
-            //logger.Info("Popup Hidden");
+            logger.Info("Popup Hidden");
             //StopVideo();
             //StopTalkAndListen();
-            //this.Hide();
+            this.Hide();
         }
 
-        public void ExitApp(object sender, EventArgs e)
+        public async void ExitApp(object sender, EventArgs e)
         {
-            //HidePopupWindow();
-            //_dTimer.Stop();
-            //StopVideo(true);
-            //StopTalkAndListen();
-            //if (System.Windows.Application.Current != null)
-            //    System.Windows.Application.Current.Shutdown();
+            await Video1Area.Close();
+
+            HidePopupWindow();
+
+            if (System.Windows.Application.Current != null)
+                System.Windows.Application.Current.Shutdown();
         }
 
         private async void StartVideo()
         {
-            if (!_stillImagesDisplayed)
+            List<(Unosquare.FFME.MediaElement, string)> mediaElemCameras = new List<(Unosquare.FFME.MediaElement, string)> 
             {
-                bool videoOk = await Video1Area.Open(new Uri("rtsp://192.168.86.246:7447/5ebeefe771918b365853ae4a_1"));
-                logger.Info("Video open result " + videoOk);
-            }
-            //_videoStreamDisplays.start();
-        }
+                ( Video1Area, "frontDoorCamera" ),
+                ( Video2Area, "garageCamera" ),
+                ( Video3Area, "axis1054Camera" ),
+            };
 
-        private void StopVideo(bool unsubscribeEvents = false)
-        {
-            //_videoStreamDisplays.stop(unsubscribeEvents);
+            // Start video
+            foreach (var mec in mediaElemCameras)
+            {
+                try
+                {
+                    string imgURL = _deviceManager.GetString(mec.Item2, 0, "videoURL");
+                    logger.Info("Video URL " + imgURL);
+                    if (imgURL.Length > 0)
+                    {
+                        bool videoOk = await mec.Item1.Open(new Uri(imgURL));
+                        logger.Info(mec.Item2 + " video open result " + videoOk);
+                    }
+                }
+                catch (Exception excp)
+                {
+                    logger.Error("Failed to open video " + excp.ToString());
+                }
+            }
         }
 
         private void StartListen_Click(object sender, RoutedEventArgs e)
@@ -253,42 +202,6 @@ namespace HomeControlPanel
             Video1Area.IsMuted = true;
         }
 
-        private void GarageStatusRefresh()
-        {
-//            _garageStatusRefreshTime = DateTime.Now;
-
-//            // Update the door status using a delegate as it is UI update
-//            this.Dispatcher.BeginInvoke(
-//                (Action)delegate ()
-//                {
-//                    ShowDoorStatus();
-//                }
-//                );
-//            // Check if popup window and start listing to audio from camera
-//            if (_frontDoorControl.IsDoorbellPressed())
-//            {
-//                System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
-//                    (System.Windows.Forms.MethodInvoker)delegate ()
-//                    {
-//                        ShowPopupWindow(AUTO_HIDE_AFTER_AUTO_SHOW_SECS);
-//#if (LISTEN_TO_CAMERA)
-//                        _listenToAxisCamera.ListenForAFixedPeriod(_timeToListenAfterDoorbellRingInSecs);
-//#endif
-//                    });
-//            }
-        }
-
-        private void CameraMotionDetectFn()
-        {
-            // This is here to soak up camera motion events which currently do nothing - used to AutoShowWindowFn
-            DeviceInfo devInfo = _configFileInfo.GetDevice("frontDoorCamera");
-            if (devInfo != null)
-            {
-                if (devInfo.motionDetectAutoShow != 0)
-                    AutoShowWindowFn();
-            }
-        }
-
         private void AutoShowWindowFn()
         {
             //System.Windows.Application.Current.Dispatcher.BeginInvoke(DispatcherPriority.Background,
@@ -298,25 +211,8 @@ namespace HomeControlPanel
             //        });
         }
 
-        private void Unlock_Inner_Click(object sender, RoutedEventArgs e)
-        {
-            //if (_frontDoorControl != null)
-            //    _frontDoorControl.UnlockInnerDoor();
-            //_controlToReceiveFocus.Focus();
-        }
-
-        private void Lock_Inner_Click(object sender, RoutedEventArgs e)
-        {
-            //if (_frontDoorControl != null)
-            //    _frontDoorControl.LockInnerDoor();
-            //_controlToReceiveFocus.Focus();
-        }
-
         private void Settings_Click(object sender, RoutedEventArgs e)
         {
-            //_controlToReceiveFocus.Focus();
-            //SettingsWindow sw = new SettingsWindow(_localAudioDevices, _configFileInfo);
-            //sw.Show();
         }
 
         private void outSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
@@ -356,105 +252,70 @@ namespace HomeControlPanel
         private void ShowDoorStatus()
         {
             // Front door
-            if (_deviceManager.getVal("frontDoorLock", 0, "locked") != 0)
+            if (_deviceManager.GetVal("frontDoorLock", 0, "locked") != 0)
                 mainDoorLockState.Source = doorLockedImages.Img1();
             else
                 mainDoorLockState.Source = doorLockedImages.Img2();
-            if (_deviceManager.getVal("frontDoorLock", 1, "locked") != 0)
+            if (_deviceManager.GetVal("frontDoorLock", 1, "locked") != 0)
                 innerDoorLockState.Source = doorLockedImages.Img1();
             else
                 innerDoorLockState.Source = doorLockedImages.Img2();
-            if (_deviceManager.getVal("frontDoorLock", 0, "closed") != 0)
+            if (_deviceManager.GetVal("frontDoorLock", 0, "closed") != 0)
                 mainDoorOpenState.Source = doorClosedImages.Img1();
             else
                 mainDoorOpenState.Source = doorClosedImages.Img2();
 
             // Garage
-            if (_deviceManager.getVal("garageDoorLock", 0, "locked") != 0)
+            if (_deviceManager.GetVal("garageDoorLock", 0, "locked") != 0)
                 garageDoorOpenState.Source = garageClosedImages.Img1();
-            else if (_deviceManager.getVal("garageDoorLock", 0, "open") != 0)
+            else if (_deviceManager.GetVal("garageDoorLock", 0, "open") != 0)
                 garageDoorOpenState.Source = garageClosedImages.Img2();
             else
                 garageDoorOpenState.Source = garageUnknownImages.Img1();
 
             // Bell
-            if (_deviceManager.getVal("frontDoorLock", 0, "bell") != 0)
+            if (_deviceManager.GetVal("frontDoorLock", 0, "bell") != 0)
                 doorBellState.Source = doorBellImages.Img1();
             else
                 doorBellState.Source = null;
         }
 
-        private void dtimer_Tick(object sender, EventArgs e)
+        private void UIUpdateTimerFn(object sender, EventArgs e)
         {
-            //// Check for start acquisition
-            //if (!dataAcqStarted && configAcquiredOk)
-            //{
-            //    if (ticksSinceConfigAcquired > 1)
-            //    {
-            //        dataAcqStarted = true;
-            //        StartDataAcquisition();
-            //    }
-            //    ticksSinceConfigAcquired++;
-            //}
+            // Check for auto-hide required
+            if (_autoHideRequiredSecs > 0)
+            {
+                _autoHideRequiredSecs--;
+                if (_autoHideRequiredSecs == 0)
+                {
+                    HidePopupWindow();
+                }
+            }
 
-            //// Check for auto-hide required
-            //if (_autoHideRequiredSecs > 0)
-            //{
-            //    _autoHideRequiredSecs--;
-            //    if (_autoHideRequiredSecs == 0)
-            //    {
-            //        HidePopupWindow();
-            //    }
-            //}
+            // Show door update times
+            SetDoorUpdateStatus(DoorStatusTextBox, "frontDoorLock");
+            SetDoorUpdateStatus(GarageStatusTextBox, "garageDoorLock");
+        }
 
-            //// Show time since last door status update
-            //if (_doorStatusRefreshTime == null)
-            //{
-            //    DoorStatusTextBox.Text = "Door no info";
-            //}
-            //else
-            //{
-            //    TimeSpan? ts = DateTime.Now - _doorStatusRefreshTime;
-            //    if (ts != null)
-            //    {
-            //        DoorStatusTextBox.Text = "Door info " + Math.Round(ts.Value.TotalSeconds).ToString() + "s old";
-            //    }
-            //}
+        private void SetDoorUpdateStatus(System.Windows.Controls.TextBox box, string doorName)
+        {
+            int timeVal = _deviceManager.GetVal(doorName, 0, "sinceUpdateSecs");
+            ShowTextInBox(box, timeVal >= 0 ? timeVal.ToString() + "s old" : "No Data", timeVal < 0 || timeVal > 30);
+        }
 
-            //// Show time since last garage status update
-            //if (_garageStatusRefreshTime == null)
-            //{
-            //    GarageStatusTextBox.Text = "Garage no info";
-            //}
-            //else
-            //{
-            //    TimeSpan? ts = DateTime.Now - _garageStatusRefreshTime;
-            //    if (ts != null)
-            //    {
-            //        GarageStatusTextBox.Text = "Garage info " + Math.Round(ts.Value.TotalSeconds).ToString() + "s old";
-            //    }
-            //}
-
-            //// Poll for new motion detected if required
-            //DeviceInfo devInfo = _configFileInfo.GetDevice("frontDoorCamera");
-            //if (devInfo != null)
-            //{
-            //    if (devInfo.imageGrabPoll != 0)
-            //    {
-            //        string folder = devInfo.imageGrabPath;
-            //        DirectoryInfo info = new DirectoryInfo(folder);
-            //        FileInfo[] files = info.GetFiles("*.jpg").OrderBy(p => p.CreationTime).ToArray();
-            //        if (files.Length <= 0)
-            //            return;
-            //        string newestFname = files[files.Length - 1].Name;
-            //        if (_lastFrontDoorImageName != newestFname)
-            //        {
-            //            _lastFrontDoorImageName = newestFname;
-            //            AutoShowWindowFn();
-            //            showImages();
-            //        }
-            //    }
-            //}
+        private void ShowTextInBox(System.Windows.Controls.TextBox box, string textToShow, bool isAlert)
+        {
+            if (isAlert)
+            {
+                box.Background = Brushes.Red;
+                box.Foreground = Brushes.White;
+            }
+            else
+            {
+                box.Background = Brushes.White;
+                box.Foreground = Brushes.Black;
+            }
+            box.Text = textToShow;
         }
 
         private void TextMatrixSendButton_Click(object sender, RoutedEventArgs e)
@@ -499,8 +360,8 @@ namespace HomeControlPanel
             image2.Visibility = showImages ? Visibility.Visible : Visibility.Hidden;
             image3.Visibility = showImages ? Visibility.Visible : Visibility.Hidden;
             Video1Area.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
-            video2.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
-            video3.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
+            Video2Area.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
+            Video3Area.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
         }
 
         private void BtnShowImage_Click(object sender, RoutedEventArgs e)
@@ -608,12 +469,6 @@ namespace HomeControlPanel
 
         private void ActionButtonClick(object sender, RoutedEventArgs e)
         {
-            //var buttonActions = new Dictionary<string, Action>()
-            //{
-            //    { "Unlock_Main", () => { _deviceManager.Control("frontDoorLock", 0, "unlock"); } },
-            //    { "Lock_Main", () => { _deviceManager.Control("frontDoorLock", 0, "lock"); } },
-            //};
-
             string buttonName = (sender as System.Windows.Controls.Button).Name.ToString();
             string tag = (sender as System.Windows.Controls.Button).Tag.ToString();
 
@@ -646,8 +501,6 @@ namespace HomeControlPanel
                     }
                 );
             }
-
-            //_doorStatusRefreshTime = DateTime.Now;
 
             // Update UI
             this.Dispatcher.BeginInvoke(

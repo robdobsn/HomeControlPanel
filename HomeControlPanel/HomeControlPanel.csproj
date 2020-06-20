@@ -241,13 +241,15 @@
       <SubType>Designer</SubType>
     </ApplicationDefinition>
     <Compile Include="BlindsControl.cs" />
-    <Compile Include="CameraMotion.cs" />
+    <Compile Include="CameraDevice.cs" />
     <Compile Include="CatDeterrent.cs" />
     <Compile Include="DeviceBase.cs" />
+    <Compile Include="DeviceInfo.cs" />
     <Compile Include="DeviceManager.cs" />
     <Compile Include="ConfigFileInfo.cs" />
     <Compile Include="EasyButtonImage.cs" />
     <Compile Include="DoorControl.cs" />
+    <Compile Include="HomeScene.cs" />
     <Compile Include="ImageBuffer.cs" />
     <Compile Include="LedMatrix.cs" />
     <Compile Include="HomeScenes.cs" />

@@ -1,8 +1,4 @@
-﻿//#define USE_HTTP_REST_API
-//#define USE_UDP_REST_API
-#define USE_MANAGED_MQTT
-//#define LISTEN_FOR_UDP_DOOR_STATUS
-//#define LISTEN_FOR_TCP_DOOR_STATUS
+﻿#define USE_MANAGED_MQTT
 #define POLL_FOR_TCP_DOOR_STATUS
 
 using System;
@@ -37,15 +33,14 @@ namespace HomeControlPanel
         public delegate void DoorEventCallback(DoorControl doorControl);
         private DoorEventCallback _doorEventCallback;
 
+        // Last time door status received
+        private DateTime _lastDoorStatusTime = DateTime.MinValue;
+
         // Device info for door
         DeviceInfo _deviceInfo;
 
         // MQTT client
         private IManagedMqttClient _mqttClient;
-
-#if USE_HTTP_REST_API || USE_UDP_REST_API
-        private string _doorIPAddress;
-#endif
 
         // This is the format received from the door controller
         public class JsonDoorStatus
@@ -114,22 +109,6 @@ namespace HomeControlPanel
         private int _doorUserNumber;
         private string _doorUserPin;
 
-#if USE_HTTP_REST_API || USE_UDP_REST_API
-        // Timer for re-requesting notifications - in case door controller restarts
-        private Timer _doorStatusTimer;
-        private int _doorStatusRequestNotifyCount = 0;
-        private const int _doorStatusRequestResetTo = 1;
-        private const int _doorStatusRequestResetAfter = 100;
-#endif
-
-#if LISTEN_FOR_TCP_DOOR_STATUS
-        // TCP Listener for door status and thread signal.
-        private TcpListener _tcpListenerForDoorStatus;
-#endif
-#if LISTEN_FOR_UDP_DOOR_STATUS
-        private UdpClient _udpClientForDoorStatus;
-#endif
-
         // Front Doot Control Constructor
         public DoorControl(ConfigFileInfo configFileInfo, DeviceInfo devInfo, DoorEventCallback doorEventCallback)
         {
@@ -138,13 +117,10 @@ namespace HomeControlPanel
             _doorEventCallback = doorEventCallback;
 
             // Cache useful info
-#if USE_HTTP_REST_API || USE_UDP_REST_API
-            _doorIPAddress = ConfigFileInfo.getIPAddressForName(_deviceInfo.hostname);
-#endif
             _doorUserNumber = devInfo.userNum;
             _doorUserPin = devInfo.userPin;
 
-#if USE_MANAGED_MQTT
+            // MQTT
             String clientName = Environment.MachineName + "_" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
             var options = new ManagedMqttClientOptionsBuilder()
                 .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
@@ -158,8 +134,12 @@ namespace HomeControlPanel
             _mqttClient.SubscribeAsync(topic);
             _mqttClient.StartAsync(options);
 
+            // Handler
             _mqttClient.UseApplicationMessageReceivedHandler(e =>
             {
+                // Update last time
+                _lastDoorStatusTime = DateTime.Now;
+
                 // Handle message received
                 _doorStatus.UpdateFromJson(Encoding.UTF8.GetString(e.ApplicationMessage.Payload));
                 _doorEventCallback(this);
@@ -167,77 +147,11 @@ namespace HomeControlPanel
                 // Debug
                 logger.Info($"{e.ApplicationMessage.Topic} {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)} QoS = {e.ApplicationMessage.QualityOfServiceLevel} Retain = {e.ApplicationMessage.Retain}");
             });
-#endif
-
-#if USE_HTTP_REST_API || USE_UDP_REST_API
-            // Timer to update status
-            _doorStatusTimer = new Timer(1000);
-            _doorStatusTimer.Elapsed += new ElapsedEventHandler(OnDoorStatusTimer);
-
-            // TCP listener for door status
-            DoorStatusListenerStart();
-#endif
         }
 
-        /// <summary>
         /// CallDoorApiFunction
-        /// </summary>
-        /// <param name="functionAndArgs"></param>
-        /// Method to make call on door controller using whatever connection method is current
-        /// 
         private void CallDoorApiFunction(String functionAndArgs)
         {
-#if USE_HTTP_REST_API
-            try
-            {
-                string uriStr = "http://" + _doorIPAddress + "/" + functionAndArgs;
-                Uri uri = new Uri(uriStr, UriKind.Absolute);
-
-                // Using WebClient as can't get HttpClient to not block
-                //logger.Info("FrontDoorControl::CallDoorApiFunction " + uriStr);
-
-                using (WebClient client = new WebClient())
-                {
-
-                    client.DownloadStringCompleted += (sender, e) =>
-                    {
-                        if (e.Error != null)
-                        {
-                            logger.Error("FrontDoorControl:Error in http response {0}", e.Error.ToString());
-                        }
-                        else
-                        {
-                            DoorApiFnCompleted(e.Result);
-                            Console.WriteLine(e.Result);
-                        }
-                    };
-
-                    client.DownloadStringAsync(uri);
-                }
-            }
-            catch (Exception e)
-            {
-                logger.Error("FrontDoorControl::CallDoorApiFunction exception {0}", e.Message);
-            }
-#endif
-#if USE_UDP_REST_API
-            try
-            {
-                Socket sock = new Socket(AddressFamily.InterNetwork, SocketType.Dgram, ProtocolType.Udp);
-                IPAddress serverAddr = IPAddress.Parse(_doorIPAddress);
-                IPEndPoint endPoint = new IPEndPoint(serverAddr, _doorControlRestAPIPort);
-                byte[] send_buffer = Encoding.ASCII.GetBytes(functionAndArgs);
-                sock.SendTo(send_buffer, endPoint);
-                logger.Debug("Sent command to door " + _doorIPAddress + " port " + _doorControlRestAPIPort.ToString() + " by UDP " + functionAndArgs);
-            }
-            catch (Exception excp)
-            {
-                logger.Error("FrontDoorControl::CallDoorApiFunction exception {0}", excp.Message);
-            }
-
-#endif
-
-#if USE_MANAGED_MQTT
             try
             {
                 var message = new MqttApplicationMessageBuilder()
@@ -252,29 +166,14 @@ namespace HomeControlPanel
             {
                 logger.Error("FrontDoorControl::CallDoorApiFunction MQTT exception {0}", e.Message);
             }
-#endif
         }
 
-        /// <summary>
         /// DoorApiFnCompleted
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
         private void DoorApiFnCompleted(string rsltStr)
         {
             logger.Info("DoorControl::DoorApiCall ok {0}", rsltStr);
             _doorStatus.UpdateFromJson(rsltStr);
             _doorEventCallback(this);
-        }
-
-        /// <summary>
-        /// Start the process of generating periodic status updates - for polled connections
-        /// </summary>
-        public void StartUpdates()
-        {
-#if USE_HTTP_REST_API || USE_UDP_REST_API
-            _doorStatusTimer.Start();
-#endif
         }
 
         public void Control(int idx, string cmd)
@@ -285,7 +184,7 @@ namespace HomeControlPanel
                 ControlDoor("l/" + idx.ToString());
         }
 
-        public int getVal(int idx, string valType)
+        public int GetVal(int idx, string valType)
         {
             if (idx == 0 && valType == "bell")
                 return _doorStatus._bellPressed ? 1 : 0;
@@ -295,7 +194,13 @@ namespace HomeControlPanel
                 return _doorStatus._doorOpenStrs[idx] == "closed" ? 1 : 0;
             else if (valType == "open")
                 return _doorStatus._doorOpenStrs[idx] == "open" ? 1 : 0;
+            else if (valType == "sinceUpdateSecs")
+                return _lastDoorStatusTime == DateTime.MinValue ? -1 : (int)(DateTime.Now - _lastDoorStatusTime).TotalSeconds;
             return 0;
+        }
+        public string GetString(int idx, string valType)
+        {
+            return "";
         }
 
         private void ControlDoor(string doorCommand)
@@ -303,103 +208,10 @@ namespace HomeControlPanel
                 CallDoorApiFunction(doorCommand);
         }
 
-        public static IPAddress GetDefaultGateway()
-        {
-            return NetworkInterface
-                .GetAllNetworkInterfaces()
-                .Where(n => n.OperationalStatus == OperationalStatus.Up)
-                .Where(n => n.NetworkInterfaceType != NetworkInterfaceType.Loopback)
-                .SelectMany(n => n.GetIPProperties()?.GatewayAddresses)
-                .Select(g => g?.Address)
-                .Where(a => a != null)
-                .Where(a => a.AddressFamily == AddressFamily.InterNetwork)  // IP4
-                .Where(a => Array.FindIndex(a.GetAddressBytes(), b => b != 0) >= 0)
-                .FirstOrDefault();
-        }
-
-        public static string GetLocalIPAddress()
-        {
-            IPAddress ipGateway = GetDefaultGateway();
-
-            var host = Dns.GetHostEntry(Dns.GetHostName());
-            // Favour IP4 192.168.x.x addresses on the same 255.255.255.0 subnet as the default gateway
-            foreach (var ip in host.AddressList)
-            {
-                if (ip.AddressFamily == AddressFamily.InterNetwork)
-                {
-                    byte[] ipGWBytes = ipGateway.GetAddressBytes();
-                    byte[] ipBytes = ip.GetAddressBytes();
-                    bool bMatch = true;
-                    for (int i = 0; i < 3; i++)
-                        if (ipGWBytes[i] != ipBytes[i])
-                            bMatch = false;
-                    if (bMatch)
-                        return ip.ToString();
-                }
-            }
-            // Then 172.x.x.x addresses
-            foreach (var ip in host.AddressList)
-            {
-                if (ip.AddressFamily == AddressFamily.InterNetwork)
-                {
-                    if (ip.ToString().Substring(0, 4) == "172.")
-                        return ip.ToString();
-                }
-            }
-            // Otherwise any address
-            foreach (var ip in host.AddressList)
-            {
-                if (ip.AddressFamily == AddressFamily.InterNetwork)
-                {
-                    return ip.ToString();
-                }
-            }
-            return "";
-        }
-
         private void OnDoorStatusTimer(object source, ElapsedEventArgs e)
         {
 #if POLL_FOR_TCP_DOOR_STATUS
             CallDoorApiFunction("q");
-#endif
-
-#if LISTEN_FOR_TCP_DOOR_STATUS || LISTEN_FOR_UDP_DOOR_STATUS
-            try
-            {
-                if (_doorStatusRequestNotifyCount == 0)
-                {
-#if LISTEN_FOR_TCP_DOOR_STATUS
-                    CallDoorApiFunction("no/" + GetLocalIPAddress() + ":" + _doorControlNotifyPort.ToString() + "/1/-60/doorstatus");
-                    logger.Info("Requesting TCP notification from door control");
-#endif
-#if LISTEN_FOR_UDP_DOOR_STATUS
-                    CallDoorApiFunction("no/" + GetLocalIPAddress() + ":" + _doorControlNotifyPort.ToString() + "/0/-60/doorstatus");
-                    logger.Info("Requesting UDP notification from door control");
-#endif
-                }
-#if REQUEST_STATUS_ON_TIMER
-                    else if (_doorStatusRequestNotifyCount == 2)
-                    {
-                        string uriStr = "http://" + _doorIPAddress + "/q";
-                        Uri uri = new Uri(uriStr);
-
-                        // Using WebClient as can't get HttpClient to not block
-                        WebClient requester = new WebClient();
-                        requester.OpenReadCompleted += new OpenReadCompletedEventHandler(DoorStatusCallback);
-                        requester.OpenReadAsync(uri);
-
-                        logger.Info("FrontDoorControl::OnDoorStatusTimer " + uriStr);
-                    }
-#endif
-            }
-            catch (Exception excp)
-            {
-                logger.Error("Exception in FrontDoorControl::OnDoorStatusTimer {0}", excp.Message);
-            }
-            // Update counter
-            _doorStatusRequestNotifyCount++;
-            if (_doorStatusRequestNotifyCount > _doorStatusRequestResetAfter)
-                _doorStatusRequestNotifyCount = 0;
 #endif
         }
 
@@ -409,100 +221,6 @@ namespace HomeControlPanel
             return (DateTime.Now - _doorStatus._lastDoorStatusTime).TotalSeconds < 30;
         }
 
-        // Door status listener - only one client connection asynchronously
-        public void DoorStatusListenerStart()
-        {
-#if LISTEN_FOR_TCP_DOOR_STATUS
-            _tcpListenerForDoorStatus = new TcpListener(IPAddress.Any, _doorControlNotifyPort);
-            _tcpListenerForDoorStatus.Start();
-
-            // Start to listen for connections from a client.
-            logger.Debug("Door status listening ...");
-
-            // Accept the connection. 
-            _tcpListenerForDoorStatus.BeginAcceptTcpClient(
-                new AsyncCallback(DoorStatusCallback),
-                _tcpListenerForDoorStatus);
-#endif
-#if LISTEN_FOR_UDP_DOOR_STATUS
-            _udpClientForDoorStatus = new UdpClient(_doorControlNotifyPort);
-            _udpClientForDoorStatus.BeginReceive(new AsyncCallback(DoorStatusCallback), null);
-            logger.Info("Socket bound to RFID door lock port {0}", _doorControlNotifyPort);
-#endif
-
-        }
-
-        private void DoorStatusCallback(IAsyncResult res)
-        {
-#if LISTEN_FOR_TCP_DOOR_STATUS
-            try
-            {
-                TcpListener listener = (TcpListener)res.AsyncState;
-                if (listener == null)
-                    return;
-                TcpClient tcpClient = listener.EndAcceptTcpClient(res);
-                using (var networkStream = tcpClient.GetStream())
-                {
-                    string req = new StreamReader(networkStream).ReadToEnd();
-                    logger.Debug("DoorStatusResp " + req);
-                    string[] reqLines = Regex.Split(req, "\r\n|\r|\n");
-                    string payload = "";
-                    for (int payloadLineIdx = 0; payloadLineIdx < reqLines.Length; payloadLineIdx++)
-                    {
-                        if (reqLines[payloadLineIdx].Trim().Length == 0)
-                        {
-                            if (payloadLineIdx + 1 < reqLines.Length)
-                                payload = reqLines[payloadLineIdx + 1];
-                        }
-
-                    }
-                    if (payload.Length > 0)
-                    {
-                        logger.Debug(payload);
-                        _doorStatus.UpdateFromJson(payload);
-                        _doorStatusRefreshCallback();
-                    }
-                }
-            }
-            catch (Exception excp)
-            {
-                logger.Error("Exception in FrontDoorControl::DoorStatusCallback {0}", excp.Message);
-            }
-            // Listen again
-            _tcpListenerForDoorStatus.BeginAcceptTcpClient(
-                    new AsyncCallback(DoorStatusCallback),
-                    _tcpListenerForDoorStatus);
-#endif
-#if LISTEN_FOR_UDP_DOOR_STATUS
-            try
-            {
-                // Process data
-                IPEndPoint remoteIpEndPoint = new IPEndPoint(IPAddress.Any, _doorControlNotifyPort);
-                byte[] received = _udpClientForDoorStatus.EndReceive(res, ref remoteIpEndPoint);
-                string recvStr = Encoding.UTF8.GetString(received);
-//                logger.Debug("Received UDP from door control port " + remoteIpEndPoint.ToString());
-                if (remoteIpEndPoint.Address.Equals(IPAddress.Parse(_doorIPAddress)))
-                {
-                    _doorStatus.UpdateFromJson(recvStr);
-                    _doorStatusRefreshCallback();
-                    //                    logger.Debug("Updating UI with  " + recvStr);
-                    // Reset the notification counter so we don't keep requesting notifications when we're already getting them
-                    _doorStatusRequestNotifyCount = _doorStatusRequestResetTo;
-                }
-                else
-                {
-//                    logger.Debug("Not from the door we're managing " + recvStr);
-                }
-            }
-            catch (Exception excp)
-            {
-                logger.Error("Exception in FrontDoorControl::DoorStatusCallback {0}", excp.Message);
-            }
-            // Restart receive
-            _udpClientForDoorStatus.BeginReceive(new AsyncCallback(DoorStatusCallback), null);
-
-#endif
-        }
     }
 }
 

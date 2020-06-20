@@ -27,9 +27,14 @@ namespace HomeControlPanel
             SendGroupCommand(cmd);
         }
 
-        public int getVal(int idx, string valType)
+        public int GetVal(int idx, string valType)
         {
             return 0;
+        }
+
+        public string GetString(int idx, string valType)
+        {
+            return "";
         }
 
         public void SendGroupCommand(string groupCommand)
@@ -66,29 +71,6 @@ namespace HomeControlPanel
                     break;
                 }
             }
-            //foreach (string ipAddress in _ipAddresses)
-            //{
-            //    try
-            //    {
-            //        Uri uri = new Uri("http://" + ipAddress + "/json.htm?type=scenes");
-
-            //        // Using WebClient as can't get HttpClient to not block
-            //        WebClient requester = new WebClient();
-            //        Dictionary<string, string> reqContext = new Dictionary<string, string>();
-            //        reqContext.Add("IP", ipAddress);
-            //        reqContext.Add("cmd", groupCommand);
-            //        requester.OpenReadAsync(uri, reqContext);
-            //        requester.OpenReadCompleted += new OpenReadCompletedEventHandler(getScenesCompleted);
-            //    }
-            //    catch (HttpRequestException excp)
-            //    {
-            //        logger.Error("DomoticzControl::SendGroupCommand {0} exception {1}", groupCommand, excp.Message);
-            //    }
-            //    catch (Exception excp)
-            //    {
-            //        logger.Error("DomoticzControl::SendGroupCommand {0} exception {1}", groupCommand, excp.Message);
-            //    }
-            //}
         }
 
         private class Scene
@@ -97,76 +79,6 @@ namespace HomeControlPanel
             public string idx = "";
             public string Type = "";
         };
-
-        //private void getScenesCompleted(object sender, OpenReadCompletedEventArgs e)
-        //{
-        //    if (e.Error != null)
-        //    {
-        //        logger.Error("DomoticzControl::SendGroupCommand completed but exception {0}", e.Error.Message);
-        //        return;
-        //    }
-
-        //    Dictionary<string, string> reqContext = (Dictionary<string, string>)e.UserState;
-        //    string ipAddress = reqContext["IP"];
-        //    string command = reqContext["cmd"];
-        //    string sceneIdx = "";
-
-        //    Stream reply = null;
-        //    StreamReader s = null;
-
-        //    try
-        //    {
-        //        // Get the scene data
-        //        reply = (Stream)e.Result;
-        //        s = new StreamReader(reply);
-        //        string jsonData = s.ReadToEnd();
-        //        JObject sceneResults = JObject.Parse(jsonData);
-        //        IList<JToken> results = sceneResults["result"].Children().ToList();
-        //        IList<Scene> scenes = new List<Scene>();
-        //        foreach (JToken result in results)
-        //        {
-        //            Scene scene = JsonConvert.DeserializeObject<Scene>(result.ToString());
-        //            scenes.Add(scene);
-        //        }
-
-        //        foreach (Scene scene in scenes)
-        //        {
-        //            if (scene.Name == command)
-        //                sceneIdx = scene.idx;
-        //        }
-
-        //        // Check if scene found - may not be as some units may not support the scene
-        //        if (sceneIdx == "")
-        //            return;
-
-        //        // Now call out to actually set the scene
-        //        try
-        //        {
-        //            Uri uri = new Uri("http://" + ipAddress + "/json.htm?type=command&param=switchscene&idx=" + sceneIdx + "&switchcmd=On");
-
-        //            // Using WebClient as can't get HttpClient to not block
-        //            WebClient requester = new WebClient();
-        //            requester.OpenReadAsync(uri, reqContext);
-        //            requester.OpenReadCompleted += new OpenReadCompletedEventHandler(domoticzCommandCompleted);
-        //        }
-        //        catch (HttpRequestException excp)
-        //        {
-        //            logger.Error("DomoticzControl::SendGroupCommandStage2 {0} exception {1}", command, excp.Message);
-        //        }
-        //    }
-        //    finally
-        //    {
-        //        if (s != null)
-        //        {
-        //            s.Close();
-        //        }
-
-        //        if (reply != null)
-        //        {
-        //            reply.Close();
-        //        }
-        //    }
-        //}
 
         private void execSceneCompleted(object sender, OpenReadCompletedEventArgs e)
         {

@@ -9,7 +9,7 @@ namespace HomeControlPanel
     interface DeviceBase
     {
         void Control(int idx, string cmd);
-
-        int getVal(int idx, string valType);
+        int GetVal(int idx, string valType);
+        string GetString(int idx, string valType);
     }
 }

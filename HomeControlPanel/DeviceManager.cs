@@ -2,6 +2,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Security.Policy;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -30,11 +31,18 @@ namespace HomeControlPanel
                 _devices[deviceName].Control(idx, cmd);
         }
 
-        public int getVal(string deviceName, int idx, string valType)
+        public int GetVal(string deviceName, int idx, string valType)
         {
             if (_devices.ContainsKey(deviceName))
-                return _devices[deviceName].getVal(idx, valType);
+                return _devices[deviceName].GetVal(idx, valType);
             return 0;
+        }
+
+        public string GetString(string deviceName, int idx, string valType)
+        {
+            if (_devices.ContainsKey(deviceName))
+                return _devices[deviceName].GetString(idx, valType);
+            return "";
         }
 
         public void Setup(ConfigFileInfo configFileInfo)
@@ -58,6 +66,22 @@ namespace HomeControlPanel
                     // Scene control
                     _devices.Add(entry.Key, new HomeScenes(ref configFileInfo, entry.Value));
                 }
+                else if (entry.Value.deviceType == "camera")
+                {
+                    // Door controls
+                    _devices.Add(entry.Key, new IPCamera(configFileInfo, entry.Value, CameraMotionCallback));
+                }
+
+
+                //        // Cat deterrent
+                //        private CatDeterrent _catDeterrent;
+
+                //        // Camera motion detect
+                //        private CameraMotion _cameraMotion;
+
+                //        // LED Matrix message board
+                //        private LedMatrix _ledMatrix;
+
 
                 //            // Cat deterrent
                 //            DeviceInfo devInfo = _configFileInfo.GetDevice("catDeterrent");
@@ -142,7 +166,12 @@ namespace HomeControlPanel
         private void DoorEventCallback(DeviceBase device)
         {
             // Update UI
-            _uiUpdateCallback(device.getVal(0, "bell") != 0);
+            _uiUpdateCallback(device.GetVal(0, "bell") != 0);
+        }
+
+        private void CameraMotionCallback(DeviceBase device)
+        {
+
         }
     }
 }
