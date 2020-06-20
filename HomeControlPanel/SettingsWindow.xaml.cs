@@ -26,26 +26,14 @@ namespace HomeControlPanel
     /// </summary>
     public partial class SettingsWindow : MetroWindow
     {
-        private AudioDevices _audioDevices;
         private ConfigFileInfo _configFileInfo;
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public SettingsWindow(AudioDevices audioDevices, ConfigFileInfo configFileInfo)
+        public SettingsWindow(ConfigFileInfo configFileInfo)
         {
-            _audioDevices = audioDevices;
             _configFileInfo = configFileInfo;
 
             InitializeComponent();
-
-            // Populate the combos
-            if (_audioDevices != null)
-            {
-                _audioDevices.UpdateDeviceInfo();
-                SpeakersCombo.ItemsSource = _audioDevices.GetOutDeviceInfo();
-                SpeakersCombo.SelectedValue = _audioDevices.GetCurWaveOutDeviceName();
-                MicrophoneCombo.ItemsSource = _audioDevices.GetInDeviceInfo();
-                MicrophoneCombo.SelectedValue = _audioDevices.GetCurWaveInDeviceName();
-            }
         }
 
         private void OkButton_Click(object sender, RoutedEventArgs e)

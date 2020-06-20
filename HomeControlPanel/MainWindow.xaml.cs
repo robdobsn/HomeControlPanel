@@ -34,8 +34,8 @@ namespace HomeControlPanel
         // Device manager
         private DeviceManager _deviceManager = null;
 
-        // Handlers for video streams - they display in an image
-        //private readonly VideoStreamDisplays _videoStreamDisplays = new VideoStreamDisplays();
+        // Show still images instead of video
+        private bool _stillImagesDisplayed = false;
 
         //        // Settings
         //        bool listenToCameraOnShow = false;
@@ -147,6 +147,13 @@ namespace HomeControlPanel
             // UI Media
             InitUIMedia();
 
+            // Set audio levels
+            Video1Area.Volume = 0.5;
+            outSlider.Value = 50;
+
+            // Start Video
+            StartVideo();
+
             // Log startup
             logger.Info("App loaded complete");
         }
@@ -154,11 +161,11 @@ namespace HomeControlPanel
 
         private void StartDataAcquisition()
         {
-//            // Start Video
-//            StartVideo();
+            // Start Video
+            StartVideo();
 
-//            // Start getting updates from front door
-//            _frontDoorControl.StartUpdates();
+            //            // Start getting updates from front door
+            //            _frontDoorControl.StartUpdates();
         }
 
         private void Window_Closed(object sender, EventArgs e)
@@ -166,8 +173,10 @@ namespace HomeControlPanel
             //_notifyIcon.Visible = false;
         }
 
-        protected override void OnClosing(CancelEventArgs e)
+        protected override async void OnClosing(CancelEventArgs e)
         {
+            logger.Info("Window closing");
+            await Video1Area.Close();
             //base.OnClosing(e);
             //e.Cancel = true;
             //WindowState = WindowState.Minimized;
@@ -228,8 +237,13 @@ namespace HomeControlPanel
             //    System.Windows.Application.Current.Shutdown();
         }
 
-        private void StartVideo()
+        private async void StartVideo()
         {
+            if (!_stillImagesDisplayed)
+            {
+                bool videoOk = await Video1Area.Open(new Uri("rtsp://192.168.86.246:7447/5ebeefe771918b365853ae4a_1"));
+                logger.Info("Video open result " + videoOk);
+            }
             //_videoStreamDisplays.start();
         }
 
@@ -240,49 +254,12 @@ namespace HomeControlPanel
 
         private void StartListen_Click(object sender, RoutedEventArgs e)
         {
-//            //OpenFileDialog dlg = new OpenFileDialog();
-//            //dlg.InitialDirectory = "c:\\";
-//            //dlg.Filter = "Image files (*.jpg)|*.jpg|All Files (*.*)|*.*";
-//            //dlg.RestoreDirectory = true;
-
-//            //if (dlg.ShowDialog() == System.Windows.Forms.DialogResult.OK)
-//            //{
-//            //    string selectedFileName = dlg.FileName;
-//            //    //FileNameLabel.Content = selectedFileName;
-//            //    BitmapImage bitmap = new BitmapImage();
-//            //    bitmap.BeginInit();
-//            //    bitmap.UriSource = new Uri(selectedFileName);
-//            //    bitmap.EndInit();
-//            //    video2.Source = bitmap;
-//            //}
-//#if (LISTEN_TO_CAMERA)
-//            if (_listenToAxisCamera != null && !_listenToAxisCamera.IsListening())
-//                _listenToAxisCamera.Start();
-//#endif
-//            _controlToReceiveFocus.Focus();
-
+            Video1Area.IsMuted = false;
         }
 
         private void StopListen_Click(object sender, RoutedEventArgs e)
         {
-//#if (LISTEN_TO_CAMERA)
-//            if (_listenToAxisCamera != null && _listenToAxisCamera.IsListening())
-//                _listenToAxisCamera.Stop();
-//#endif
-//            _controlToReceiveFocus.Focus();
-
-        }
-
-        private void StopTalkAndListen()
-        {
-//#if (TALK_TO_CAMERA)
-//            if (_talkToAxisCamera != null)
-//                _talkToAxisCamera.StopTalk();
-//#endif
-//#if (LISTEN_TO_CAMERA)
-//            if (_listenToAxisCamera != null)
-//                _listenToAxisCamera.Stop();
-//#endif
+            Video1Area.IsMuted = true;
         }
 
         private void GarageStatusRefresh()
@@ -330,20 +307,6 @@ namespace HomeControlPanel
             //        });
         }
 
-        private void Unlock_Main_Click(object sender, RoutedEventArgs e)
-        {
-            //if (_frontDoorControl != null)
-            //    _frontDoorControl.UnlockMainDoor();
-            //_controlToReceiveFocus.Focus();
-        }
-
-        private void Lock_Main_Click(object sender, RoutedEventArgs e)
-        {
-            //if (_frontDoorControl != null)
-            //    _frontDoorControl.LockMainDoor();
-            //_controlToReceiveFocus.Focus();
-        }
-
         private void Unlock_Inner_Click(object sender, RoutedEventArgs e)
         {
             //if (_frontDoorControl != null)
@@ -367,41 +330,7 @@ namespace HomeControlPanel
 
         private void outSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
         {
-            //float ov = (float)(e.NewValue / 100);
-            //if (_localAudioDevices != null)
-            //    _localAudioDevices.SetOutVolumeWhenListening(ov);
-            //Properties.Settings.Default.SpkrVol = ov;
-        }
-
-        private void inSlider_ValueChanged(object sender, RoutedPropertyChangedEventArgs<double> e)
-        {
-            //float iv = (float)(e.NewValue / 100);
-            //if (_localAudioDevices != null)
-            //    _localAudioDevices.SetInVolumeWhenTalking(iv);
-            //Properties.Settings.Default.MicVol = iv;
-        }
-
-
-        private void TalkButton_PreviewMouseDown(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-//#if (TALK_TO_CAMERA)
-//            if (_talkToAxisCamera != null && !_talkToAxisCamera.IsTalking())
-//            {
-//                // TalkButton.Background = System.Windows.Media.Brushes.Red;
-//                _talkToAxisCamera.StartTalk();
-//            }
-//#endif
-        }
-
-        private void TalkButton_PreviewMouseUp(object sender, System.Windows.Input.MouseButtonEventArgs e)
-        {
-//#if (TALK_TO_CAMERA)
-//            if (_talkToAxisCamera != null && _talkToAxisCamera.IsTalking())
-//            {
-//                _talkToAxisCamera.StopTalk();
-//            }
-//#endif
-//            _controlToReceiveFocus.Focus();
+            Video1Area.Volume = (float)(e.NewValue / 100);
         }
 
         private BitmapImage GetImageFromFolder(string folder, int imageAgeZeroNewest)
@@ -537,21 +466,6 @@ namespace HomeControlPanel
             //}
         }
 
-        private void OfficeLightsMoodButton_Click(object sender, RoutedEventArgs e)
-        {
-            //if (_domoticzControl != null)
-            //    _domoticzControl.SendGroupCommand("Office - Mood");
-            //if (_homeScenes != null)
-            //    _homeScenes.SendGroupCommand("Office - Mood");
-        }
-
-        private void OfficeLightsOffButton_Click(object sender, RoutedEventArgs e)
-        {
-            //if (_domoticzControl != null)
-            //    _domoticzControl.SendGroupCommand("Office - Off");
-            //if (_homeScenes != null)
-            //    _homeScenes.SendGroupCommand("Office - Off");
-        }
         private void TextMatrixSendButton_Click(object sender, RoutedEventArgs e)
         {
             //if (_ledMatrix != null)
@@ -589,10 +503,11 @@ namespace HomeControlPanel
 
         private void switchImageDisplay(bool showImages)
         {
+            _stillImagesDisplayed = showImages;
             image1.Visibility = showImages ? Visibility.Visible : Visibility.Hidden;
             image2.Visibility = showImages ? Visibility.Visible : Visibility.Hidden;
             image3.Visibility = showImages ? Visibility.Visible : Visibility.Hidden;
-            video1.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
+            Video1Area.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
             video2.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
             video3.Visibility = showImages ? Visibility.Hidden : Visibility.Visible;
         }
