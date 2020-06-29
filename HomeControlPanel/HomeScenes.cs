@@ -39,38 +39,46 @@ namespace HomeControlPanel
 
         public void SendGroupCommand(string groupCommand)
         {
-            // Get the scene urls
-            List<HomeScene> scenes = _configFileInfo.getScenes();
-            foreach (HomeScene scene in scenes)
-            {
-                if (scene.uniqueName == groupCommand)
-                {
-                    foreach (string url in scene.urls)
-                    {
-                        try
-                        {
-                            Uri uri = new Uri(url);
+            string configSource = HomeControlPanel.Properties.Settings.Default.ConfigSource;
+            Uri uri = new Uri("http://" + configSource + ":5076/setscene/" + groupCommand);
 
-                            // Using WebClient as can't get HttpClient to not block
-                            WebClient requester = new WebClient();
-                            Dictionary<string, string> reqContext = new Dictionary<string, string>();
-                            reqContext.Add("url", url);
-                            reqContext.Add("cmd", groupCommand);
-                            requester.OpenReadAsync(uri, reqContext);
-                            requester.OpenReadCompleted += new OpenReadCompletedEventHandler(execSceneCompleted);
-                        }
-                        catch (HttpRequestException excp)
-                        {
-                            logger.Error("HomeScenes::SendGroupCommand {0} exception {1}", groupCommand, excp.Message);
-                        }
-                        catch (Exception excp)
-                        {
-                            logger.Error("HomeScenes::SendGroupCommand {0} exception {1}", groupCommand, excp.Message);
-                        }
-                    }
-                    break;
-                }
-            }
+            // Using WebClient as can't get HttpClient to not block
+            WebClient requester = new WebClient();
+            requester.OpenReadAsync(uri);
+            requester.OpenReadCompleted += new OpenReadCompletedEventHandler(execSceneCompleted);
+
+            //// Get the scene urls
+            //List<HomeScene> scenes = _configFileInfo.getScenes();
+            //foreach (HomeScene scene in scenes)
+            //{
+            //    if (scene.uniqueName == groupCommand)
+            //    {
+            //        foreach (string url in scene.urls)
+            //        {
+            //            try
+            //            {
+            //                Uri uri = new Uri(url);
+
+            //                // Using WebClient as can't get HttpClient to not block
+            //                WebClient requester = new WebClient();
+            //                Dictionary<string, string> reqContext = new Dictionary<string, string>();
+            //                reqContext.Add("url", url);
+            //                reqContext.Add("cmd", groupCommand);
+            //                requester.OpenReadAsync(uri, reqContext);
+            //                requester.OpenReadCompleted += new OpenReadCompletedEventHandler(execSceneCompleted);
+            //            }
+            //            catch (HttpRequestException excp)
+            //            {
+            //                logger.Error("HomeScenes::SendGroupCommand {0} exception {1}", groupCommand, excp.Message);
+            //            }
+            //            catch (Exception excp)
+            //            {
+            //                logger.Error("HomeScenes::SendGroupCommand {0} exception {1}", groupCommand, excp.Message);
+            //            }
+            //        }
+            //        break;
+            //    }
+            //}
         }
 
         private class Scene

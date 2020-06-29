@@ -400,7 +400,6 @@ namespace HomeControlPanel
 
         private void Toggle_Garage_Click(object sender, RoutedEventArgs e)
         {
-
         }
         
         private void SysTrayPosition()
