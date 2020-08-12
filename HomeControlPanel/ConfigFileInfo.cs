@@ -170,6 +170,8 @@ namespace HomeControlPanel
                 // Convert from JSON
                 //Console.WriteLine(s.ReadToEnd());
                 string jsonStr = s.ReadToEnd();
+                //jsonStr = jsonStr.Replace("{", "{\n");
+                //jsonStr = jsonStr.Replace("}", "}\n");
                 _scenes = JsonConvert.DeserializeObject<SceneInfo>(jsonStr);
                 logger.Info("Read scenes from server");
                 _acquireOkCallback();

@@ -167,9 +167,9 @@ namespace HomeControlPanel
         {
             List<(Unosquare.FFME.MediaElement, string)> mediaElemCameras = new List<(Unosquare.FFME.MediaElement, string)> 
             {
-                ( Video1Area, "frontDoorCamera" ),
-                ( Video2Area, "garageCamera" ),
-                ( Video3Area, "axis1054Camera" ),
+                ( Video1Area, "camFrontDoor" ),
+                ( Video2Area, "camGarage" ),
+                ( Video3Area, "camNearBins" ),
             };
 
             // Start video
