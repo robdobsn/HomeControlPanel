@@ -39,8 +39,8 @@ namespace HomeControlPanel
         // Device info for door
         DeviceInfo _deviceInfo;
 
-        // MQTT client
-        private IManagedMqttClient _mqttClient;
+        // Multi MQTT client
+        private MultiMQTTClient _multiMQTTClient;
 
         // This is the format received from the door controller
         public class JsonDoorStatus
@@ -110,7 +110,8 @@ namespace HomeControlPanel
         private string _doorUserPin;
 
         // Front Doot Control Constructor
-        public DoorControl(ConfigFileInfo configFileInfo, DeviceInfo devInfo, DoorEventCallback doorEventCallback)
+        public DoorControl(ConfigFileInfo configFileInfo, DeviceInfo devInfo, 
+                    DoorEventCallback doorEventCallback, MultiMQTTClient multiMQTTClient)
         {
             // Device info
             _deviceInfo = devInfo;
@@ -121,32 +122,20 @@ namespace HomeControlPanel
             _doorUserPin = devInfo.userPin;
 
             // MQTT
-            String clientName = Environment.MachineName + "_" + System.Reflection.Assembly.GetExecutingAssembly().GetName().Name;
-            var options = new ManagedMqttClientOptionsBuilder()
-                .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
-                .WithClientOptions(new MqttClientOptionsBuilder()
-                    .WithClientId(clientName)
-                    .WithTcpServer(_deviceInfo.mqttServer, _deviceInfo.mqttPort)
-                    .Build())
-                .Build();
-            _mqttClient = new MqttFactory().CreateManagedMqttClient();
-            var topic = new MqttTopicFilterBuilder().WithTopic(_deviceInfo.mqttOutTopic).Build();
-            _mqttClient.SubscribeAsync(topic);
-            _mqttClient.StartAsync(options);
+            _multiMQTTClient = multiMQTTClient;
+            _multiMQTTClient.subscribe(_deviceInfo.mqttOutTopic,
+                appMsg => {
+                    // Update last time
+                    _lastDoorStatusTime = DateTime.Now;
 
-            // Handler
-            _mqttClient.UseApplicationMessageReceivedHandler(e =>
-            {
-                // Update last time
-                _lastDoorStatusTime = DateTime.Now;
+                    // Handle message received
+                    _doorStatus.UpdateFromJson(Encoding.UTF8.GetString(appMsg.Payload));
+                    _doorEventCallback(this);
 
-                // Handle message received
-                _doorStatus.UpdateFromJson(Encoding.UTF8.GetString(e.ApplicationMessage.Payload));
-                _doorEventCallback(this);
+                    // Debug
+                    logger.Info($"{appMsg.Topic} {Encoding.UTF8.GetString(appMsg.Payload)} QoS = {appMsg.QualityOfServiceLevel} Retain = {appMsg.Retain}");
 
-                // Debug
-                logger.Info($"{e.ApplicationMessage.Topic} {Encoding.UTF8.GetString(e.ApplicationMessage.Payload)} QoS = {e.ApplicationMessage.QualityOfServiceLevel} Retain = {e.ApplicationMessage.Retain}");
-            });
+                });
         }
 
         /// CallDoorApiFunction
@@ -160,7 +149,7 @@ namespace HomeControlPanel
                     .WithExactlyOnceQoS()
                     .Build();
 
-                _mqttClient.PublishAsync(message);
+                _multiMQTTClient.publishAsync(message);
             }
             catch (Exception e)
             {

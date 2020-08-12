@@ -252,29 +252,29 @@ namespace HomeControlPanel
         private void ShowDoorStatus()
         {
             // Front door
-            if (_deviceManager.GetVal("frontDoorLock", 0, "locked") != 0)
+            if (_deviceManager.GetVal("lockFrontDoor", 0, "locked") != 0)
                 mainDoorLockState.Source = doorLockedImages.Img1();
             else
                 mainDoorLockState.Source = doorLockedImages.Img2();
-            if (_deviceManager.GetVal("frontDoorLock", 1, "locked") != 0)
+            if (_deviceManager.GetVal("lockFrontDoor", 1, "locked") != 0)
                 innerDoorLockState.Source = doorLockedImages.Img1();
             else
                 innerDoorLockState.Source = doorLockedImages.Img2();
-            if (_deviceManager.GetVal("frontDoorLock", 0, "closed") != 0)
+            if (_deviceManager.GetVal("lockFrontDoor", 0, "closed") != 0)
                 mainDoorOpenState.Source = doorClosedImages.Img1();
             else
                 mainDoorOpenState.Source = doorClosedImages.Img2();
 
             // Garage
-            if (_deviceManager.GetVal("garageDoorLock", 0, "locked") != 0)
+            if (_deviceManager.GetVal("lockGarageDoor", 0, "locked") != 0)
                 garageDoorOpenState.Source = garageClosedImages.Img1();
-            else if (_deviceManager.GetVal("garageDoorLock", 0, "open") != 0)
+            else if (_deviceManager.GetVal("lockGarageDoor", 0, "open") != 0)
                 garageDoorOpenState.Source = garageClosedImages.Img2();
             else
                 garageDoorOpenState.Source = garageUnknownImages.Img1();
 
             // Bell
-            if (_deviceManager.GetVal("frontDoorLock", 0, "bell") != 0)
+            if (_deviceManager.GetVal("lockFrontDoor", 0, "bell") != 0)
                 doorBellState.Source = doorBellImages.Img1();
             else
                 doorBellState.Source = null;
@@ -293,8 +293,8 @@ namespace HomeControlPanel
             }
 
             // Show door update times
-            SetDoorUpdateStatus(DoorStatusTextBox, "frontDoorLock");
-            SetDoorUpdateStatus(GarageStatusTextBox, "garageDoorLock");
+            SetDoorUpdateStatus(DoorStatusTextBox, "lockFrontDoor");
+            SetDoorUpdateStatus(GarageStatusTextBox, "lockGarageDoor");
         }
 
         private void SetDoorUpdateStatus(System.Windows.Controls.TextBox box, string doorName)

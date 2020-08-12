@@ -39,7 +39,7 @@ namespace HomeControlPanel
 
         public void ControlBlind(int blindNumber, string direction)
         {
-        string blindsCommand = "shade/" + (blindNumber + 1).ToString() + "/" + direction + "/pulse";
+            string blindsCommand = "shade/" + (blindNumber + 1).ToString() + "/" + direction + "/pulse";
             try
             {
                 Uri uri = new Uri("http://" + _ipAddress + "/" + blindsCommand);

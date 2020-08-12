@@ -86,8 +86,8 @@ namespace HomeControlPanel
 
                 // Using WebClient as can't get HttpClient to not block
                 WebClient requester = new WebClient();
-                requester.OpenReadAsync(uri);
                 requester.OpenReadCompleted += new OpenReadCompletedEventHandler(OpenConfigSourceCallback);
+                requester.OpenReadAsync(uri);
             }
             catch (HttpRequestException excp)
             {

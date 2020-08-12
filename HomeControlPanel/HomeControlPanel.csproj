@@ -253,6 +253,7 @@
     <Compile Include="ImageBuffer.cs" />
     <Compile Include="LedMatrix.cs" />
     <Compile Include="HomeScenes.cs" />
+    <Compile Include="MultiMQTTClient.cs" />
     <Compile Include="SettingsWindow.xaml.cs">
       <DependentUpon>SettingsWindow.xaml</DependentUpon>
     </Compile>

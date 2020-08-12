@@ -16,6 +16,9 @@ namespace HomeControlPanel
         // Devices
         private Dictionary<string, DeviceBase> _devices = new Dictionary<string, DeviceBase>();
 
+        // MultiMQTTClient
+        MultiMQTTClient _multiMQTTClient = null;
+
         public delegate void UIUpdateCallbackType(bool popup);
         UIUpdateCallbackType _uiUpdateCallback;
 
@@ -54,7 +57,9 @@ namespace HomeControlPanel
                 if (entry.Value.deviceType == "doorlock")
                 {
                     // Door controls
-                    _devices.Add(entry.Key, new DoorControl(configFileInfo, entry.Value, DoorEventCallback));
+                    if (_multiMQTTClient == null)
+                        _multiMQTTClient = new MultiMQTTClient(entry.Value);
+                    _devices.Add(entry.Key, new DoorControl(configFileInfo, entry.Value, DoorEventCallback, _multiMQTTClient));
                 }
                 else if (entry.Value.deviceType == "blinds")
                 {
@@ -95,14 +100,14 @@ namespace HomeControlPanel
                 //                _cameraMotion = new CameraMotion(devInfo.notifyPort, CameraMotionDetectFn);
 
                 //            // Front door
-                //            devInfo = _configFileInfo.GetDevice("frontDoorLock");
+                //            devInfo = _configFileInfo.GetDevice("lockFrontDoor");
                 //            if (devInfo != null)
                 //            {
                 //                _frontDoorControl = new DoorControl(devInfo, DoorStatusRefresh);
                 //            }
 
                 //            // Garage door
-                //            devInfo = _configFileInfo.GetDevice("garageDoorLock");
+                //            devInfo = _configFileInfo.GetDevice("lockGarageDoor");
                 //            if (devInfo != null)
                 //                _garageDoorControl = new DoorControl(devInfo, GarageStatusRefresh);
 
@@ -121,7 +126,7 @@ namespace HomeControlPanel
                 //            _homeScenes = new HomeScenes(ref _configFileInfo);
 
                 //            // LedMatrix
-                //            devInfo = _configFileInfo.GetDevice("frontDoorLock");
+                //            devInfo = _configFileInfo.GetDevice("lockFrontDoor");
                 //            if (devInfo != null)
                 //            {
                 //                string ledMatrixIpAddress = ConfigFileInfo.getIPAddressForName(devInfo.hostname);
